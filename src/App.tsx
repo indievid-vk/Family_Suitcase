@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import {
   Share2,
   Trash2,
@@ -593,6 +593,14 @@ export default function App() {
       [modalKey]: !prev[modalKey]
     }));
   };
+
+  // Контроллеры перетаскивания для каждого окна
+  const dragControlsTripParams = useDragControls();
+  const dragControlsTravelers = useDragControls();
+  const dragControlsSuitcase = useDragControls();
+  const dragControlsExport = useDragControls();
+  const dragControlsAbout = useDragControls();
+  const dragControlsPwa = useDragControls();
   const [importText, setImportText] = useState<string>('');
   const [notification, setNotification] = useState<string>('');
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ id: string; name: string } | null>(null);
@@ -1162,7 +1170,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* ШАПКА ПРИЛОЖЕНИЯ */}
-        <header className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-200/50 pb-5 shrink-0">
+        <header className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-700 border border-orange-200/50 shrink-0">
               <Briefcase className="w-6 h-6" />
@@ -1204,88 +1212,124 @@ export default function App() {
 
         {/* МОДАЛКА ЭКСПОРТА / ИМПОРТА */}
         <AnimatePresence>
-          {isExportModalOpen && !collapsedModals.export && (
-            <motion.div 
-              key="export-expanded"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4"
-            >
+          {isExportModalOpen && (
+            <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${collapsedModals.export ? 'pointer-events-none bg-transparent backdrop-blur-none' : 'bg-slate-900/30 backdrop-blur-md'}`}>
               <motion.div 
                 layoutId="export-modal-container"
                 drag
+                dragControls={dragControlsExport}
+                dragListener={false}
                 dragMomentum={false}
                 dragElastic={0.05}
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className="bg-white/95 rounded-3xl p-6 max-w-xl w-full border border-white flex flex-col gap-4 relative text-slate-800 shadow-2xl cursor-move"
+                className={`bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto ${collapsedModals.export ? 'p-4 max-w-sm' : 'p-6 max-w-xl w-full gap-4'}`}
               >
-                <button 
-                  onClick={() => toggleModalCollapse('export')}
-                  className="absolute top-4 right-12 text-slate-400 hover:text-orange-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                  title="Свернуть"
-                >
-                  <Minimize2 className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setIsExportModalOpen(false)}
-                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                
-                <div className="border-b border-slate-100 pb-3 cursor-move">
-                  <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
-                    <Share2 className="w-4 h-4 text-orange-500" />
-                    Поделиться сборами
-                  </h3>
-                  <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Экспорт и импорт списков через файлы</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 cursor-default" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                      <Download className="w-3.5 h-3.5" /> 1. Сохранить записи:
-                    </span>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Сохраните файл со всеми списками вещей и настройками на ваше устройство. Файл можно отправить близким в любой мессенджер.
-                    </p>
-                    <motion.button 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleExportToFile}
-                      className="mt-auto w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                {/* ХЕДЕР С ТРЕУГОЛЬНИКОМ СВОРАЧИВАНИЯ И С ТРЕМЯ ТОЧКАМИ ПЕРЕТАСКИВАНИЯ */}
+                <div className="flex items-center justify-between border-b border-slate-100/80 pb-3 relative">
+                  <div className="flex items-center gap-3">
+                    {/* Три точки слева от заголовка для перетаскивания */}
+                    <div 
+                      onPointerDown={(e) => dragControlsExport.start(e)}
+                      className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
+                      title="Перетащить окно"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      Сохранить записи
-                    </motion.button>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
+                        <Share2 className="w-4 h-4 text-orange-500" />
+                        Поделиться сборами
+                      </h3>
+                      {!collapsedModals.export && (
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Экспорт и импорт списков через файлы</p>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                      <Upload className="w-3.5 h-3.5" /> 2. Восстановить записи:
-                    </span>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Выберите ранее сохраненный файл со списками вещей `.json` для мгновенной загрузки и восстановления данных:
-                    </p>
-                    <motion.button 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        fileInputRef.current?.click();
-                        setIsExportModalOpen(false);
-                      }}
-                      className="mt-auto w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  <div className="flex items-center gap-1.5">
+                    {/* Треугольник справа от заголовка для сворачивания */}
+                    <button 
+                      onClick={() => toggleModalCollapse('export')}
+                      className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
+                      title={collapsedModals.export ? "Развернуть" : "Свернуть"}
                     >
-                      <Upload className="w-3.5 h-3.5" />
-                      Восстановить записи
-                    </motion.button>
+                      <svg 
+                        viewBox="0 0 24 24" 
+                        className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.export ? '-rotate-90' : ''}`}
+                      >
+                        <path d="M12 16l-6-6h12z"/>
+                      </svg>
+                    </button>
+                    
+                    <button 
+                      onClick={() => setIsExportModalOpen(false)}
+                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Закрыть"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
+
+                <AnimatePresence initial={false}>
+                  {!collapsedModals.export && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden flex flex-col gap-4"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col gap-2">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                            <Download className="w-3.5 h-3.5" /> 1. Сохранить записи:
+                          </span>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Сохраните файл со всеми списками вещей и настройками на ваше устройство. Файл можно отправить близким в любой мессенджер.
+                          </p>
+                          <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handleExportToFile}
+                            className="mt-auto w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Сохранить записи
+                          </motion.button>
+                        </div>
+
+                        <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                            <Upload className="w-3.5 h-3.5" /> 2. Восстановить записи:
+                          </span>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Выберите ранее сохраненный файл со списками вещей `.json` для мгновенной загрузки и восстановления данных:
+                          </p>
+                          <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              fileInputRef.current?.click();
+                              setIsExportModalOpen(false);
+                            }}
+                            className="mt-auto w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            Восстановить записи
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
         
@@ -1463,134 +1507,169 @@ export default function App() {
 
         {/* МОДАЛКА О ПРИЛОЖЕНИИ */}
         <AnimatePresence>
-          {isAboutModalOpen && !collapsedModals.about && (
-            <motion.div 
-              key="about-expanded"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4"
-            >
+          {isAboutModalOpen && (
+            <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${collapsedModals.about ? 'pointer-events-none bg-transparent backdrop-blur-none' : 'bg-slate-900/30 backdrop-blur-md'}`}>
               <motion.div 
                 layoutId="about-modal-container"
                 drag
+                dragControls={dragControlsAbout}
+                dragListener={false}
                 dragMomentum={false}
                 dragElastic={0.05}
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className="bg-white/95 rounded-3xl max-w-2xl w-full border border-white flex flex-col relative text-slate-800 shadow-2xl max-h-[90vh] overflow-hidden cursor-move"
+                className={`bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto ${collapsedModals.about ? 'p-4 max-w-sm' : 'p-6 max-w-2xl w-full max-h-[90vh] overflow-hidden'}`}
               >
-                  {/* Закрепленная плашка с названием и кнопками управления */}
-                  <div className="p-6 pb-3 border-b border-slate-100 cursor-move relative flex-shrink-0">
+                {/* ХЕДЕР С ТРЕУГОЛЬНИКОМ СВОРАЧИВАНИЯ И С ТРЕМЯ ТОЧКАМИ ПЕРЕТАСКИВАНИЯ */}
+                <div className="flex items-center justify-between border-b border-slate-100/80 pb-3 relative flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    {/* Три точки слева для перетаскивания */}
+                    <div 
+                      onPointerDown={(e) => dragControlsAbout.start(e)}
+                      className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
+                      title="Перетащить окно"
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
+                        <Info className="w-4 h-4 text-orange-500" />
+                        О приложении
+                      </h3>
+                      {!collapsedModals.about && (
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Умный планировщик «Семейный Чемодан»</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {/* Треугольник справа от заголовка для сворачивания */}
                     <button 
                       onClick={() => toggleModalCollapse('about')}
-                      className="absolute top-5 right-12 text-slate-400 hover:text-orange-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                      title="Свернуть"
+                      className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
+                      title={collapsedModals.about ? "Развернуть" : "Свернуть"}
                     >
-                      <Minimize2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => setIsAboutModalOpen(false)}
-                      className="absolute top-5 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                    >
-                      <X className="w-5 h-5" />
+                      <svg 
+                        viewBox="0 0 24 24" 
+                        className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.about ? '-rotate-90' : ''}`}
+                      >
+                        <path d="M12 16l-6-6h12z"/>
+                      </svg>
                     </button>
                     
-                    <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
-                      <Info className="w-4 h-4 text-orange-500" />
-                      О приложении
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Умный планировщик «Семейный Чемодан»</p>
+                    <button 
+                      onClick={() => setIsAboutModalOpen(false)}
+                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Закрыть"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
+                </div>
 
-                  {/* Скроллируемая область контента */}
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pt-4 cursor-default flex flex-col gap-5 text-xs text-slate-600 leading-relaxed" onClick={(e) => e.stopPropagation()}>
-                    <div>
-                      <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">О приложении</h4>
-                      <p>
-                        <strong>«Семейный Чемодан»</strong> — это персональный интерактивный планировщик дорожных сборов. 
-                        В отличие от обычных заметок, приложение автоматически анализирует состав вашей семьи (включая детей и любимых питомцев), 
-                        условия путешествия (пляжный отдых, походы, холодный климат), длительность поездки и предлагает идеально сбалансированный список вещей. 
-                        Это избавляет вас от необходимости вспоминать всё в последний момент и гарантирует, что вы не забудете ничего важного!
-                      </p>
-                    </div>
+                <AnimatePresence initial={false}>
+                  {!collapsedModals.about && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden flex flex-col"
+                    >
+                      {/* Скроллируемая область контента */}
+                      <div className="overflow-y-auto custom-scrollbar p-1 pt-4 cursor-default flex flex-col gap-5 text-xs text-slate-600 leading-relaxed max-h-[60vh]" onClick={(e) => e.stopPropagation()}>
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">О приложении</h4>
+                          <p>
+                            <strong>«Семейный Чемодан»</strong> — это персональный интерактивный планировщик дорожных сборов. 
+                            В отличие от обычных заметок, приложение автоматически анализирует состав вашей семьи (включая детей и любимых питомцев), 
+                            условия путешествия (пляжный отдых, походы, холодный климат), длительность поездки и предлагает идеально сбалансированный список вещей. 
+                            Это избавляет вас от необходимости вспоминать всё в последний момент и гарантирует, что вы не забудете ничего важного!
+                          </p>
+                        </div>
 
-                    <div>
-                      <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Технические особенности приложения</h4>
-                      <p>
-                        Приложение работает как <strong>PWA (Progressive Web App)</strong> — современная технология, которая позволяет 
-                        устанавливать приложение на экран телефона или компьютера прямо из браузера, в обход традиционных магазинов приложений. 
-                        Оно живет прямо в вашем браузере, почти не занимая лишнего места. Все записи хранятся только внутри памяти браузера. 
-                        Это обеспечивает полную приватность без передачи информации в облачные хранилища.
-                      </p>
-                    </div>
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Технические особенности приложения</h4>
+                          <p>
+                            Приложение работает как <strong>PWA (Progressive Web App)</strong> — современная технология, которая позволяет 
+                            устанавливать приложение на экран телефона или компьютера прямо из браузера, в обход традиционных магазинов приложений. 
+                            Оно живет прямо в вашем браузере, почти не занимая лишнего места. Все записи хранятся только внутри памяти браузера. 
+                            Это обеспечивает полную приватность без передачи информации в облачные хранилища.
+                          </p>
+                        </div>
 
-                    <div className="bg-amber-50/70 border border-amber-200/50 rounded-2xl p-4 flex gap-3 text-amber-800">
-                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                      <div>
-                        <h5 className="font-bold text-xs uppercase tracking-wide mb-0.5">Ограничение</h5>
-                        <p className="text-[11px] leading-relaxed">
-                          Если вы очистите кэш или данные браузера, списки тоже сотрутся.
-                        </p>
+                        <div className="bg-amber-50/70 border border-amber-200/50 rounded-2xl p-4 flex gap-3 text-amber-800">
+                          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                          <div>
+                            <h5 className="font-bold text-xs uppercase tracking-wide mb-0.5">Ограничение</h5>
+                            <p className="text-[11px] leading-relaxed">
+                              Если вы очистите кэш или данные браузера, списки тоже сотрутся.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Возможности</h4>
+                          <p className="mb-3">
+                            Вы можете сохранять свои списки в файл и легко передавать их другим пользователям или импортировать на другие ваши устройства.
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <motion.button 
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={handleExportToFile}
+                              className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Сохранить записи
+                            </motion.button>
+
+                            <motion.button 
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                fileInputRef.current?.click();
+                                setIsAboutModalOpen(false);
+                              }}
+                              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              Восстановить записи
+                            </motion.button>
+                          </div>
+                        </div>
+
+                        {/* БЛОК ОБРАТНОЙ СВЯЗИ В СТИЛЕ ИЗОБРАЖЕНИЯ ПОЛЬЗОВАТЕЛЯ */}
+                        <div className="mt-2 bg-[#F9F6F0] rounded-3xl p-6 border border-[#ECE6D9] flex flex-col items-center gap-4 text-center">
+                          <h4 className="font-sans text-lg font-bold text-[#7D1D1D] tracking-wide uppercase">
+                            Обратная связь
+                          </h4>
+                          
+                          <motion.a 
+                            href="mailto:indievid_studiio@mail.ru"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full max-w-sm py-3 px-5 bg-[#EFECE6]/80 hover:bg-[#E7E2D8] border border-[#DCD6C8] rounded-2xl font-semibold text-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-xs"
+                          >
+                            <Mail className="w-4 h-4 text-slate-500" />
+                            <span>Написать разработчику</span>
+                          </motion.a>
+
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                            <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                            <span>Создано нейрокомандой Индивид СтуИИя</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Возможности</h4>
-                      <p className="mb-3">
-                        Вы можете сохранять свои списки в файл и легко передавать их другим пользователям или импортировать на другие ваши устройства.
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <motion.button 
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={handleExportToFile}
-                          className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Сохранить записи
-                        </motion.button>
-
-                        <motion.button 
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            fileInputRef.current?.click();
-                            setIsAboutModalOpen(false);
-                          }}
-                          className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          Восстановить записи
-                        </motion.button>
-                      </div>
-                    </div>
-
-                    {/* БЛОК ОБРАТНОЙ СВЯЗИ В СТИЛЕ ИЗОБРАЖЕНИЯ ПОЛЬЗОВАТЕЛЯ */}
-                    <div className="mt-2 bg-[#F9F6F0] rounded-3xl p-6 border border-[#ECE6D9] flex flex-col items-center gap-4 text-center">
-                      <h4 className="font-sans text-lg font-bold text-[#7D1D1D] tracking-wide uppercase">
-                        Обратная связь
-                      </h4>
-                      
-                      <motion.a 
-                        href="mailto:indievid_studiio@mail.ru"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full max-w-sm py-3 px-5 bg-[#EFECE6]/80 hover:bg-[#E7E2D8] border border-[#DCD6C8] rounded-2xl font-semibold text-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-xs"
-                      >
-                        <Mail className="w-4 h-4 text-slate-500" />
-                        <span>Написать разработчику</span>
-                      </motion.a>
-
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                        <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
-                        <span>Создано нейрокомандой Индивид СтуИИя</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
@@ -1601,312 +1680,379 @@ export default function App() {
           <aside className="lg:col-span-4 lg:sticky lg:top-4 h-fit max-h-[92vh] overflow-y-auto pr-1 flex flex-col gap-6 custom-scrollbar">
             
             {/* Параметры поездки */}
-            {!collapsedModals.tripParams && (
-              <section className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 flex flex-col gap-4 border border-white/60 shadow-lg shadow-orange-950/5">
-                <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/60 shrink-0">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <h2 className="font-extrabold text-sm text-slate-800 uppercase tracking-wide">
-                      Параметры поездки
-                    </h2>
-                  </div>
-                  <button 
-                    onClick={() => toggleModalCollapse('tripParams')}
-                    className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer"
-                    title="Свернуть блок"
+            <motion.section 
+              drag="y"
+              dragControls={dragControlsTripParams}
+              dragListener={false}
+              dragMomentum={false}
+              dragElastic={0.05}
+              className={`bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 relative select-none flex flex-col ${collapsedModals.tripParams ? 'pb-3.5 gap-0' : 'gap-4'}`}
+            >
+              <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {/* Grip drag handle: three vertical dots */}
+                  <div 
+                    onPointerDown={(e) => dragControlsTripParams.start(e)}
+                    className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
+                    title="Перетащить вверх-вниз"
                   >
-                    <Minimize2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Куда отправляемся?</span>
-                  <input 
-                    type="text" 
-                    value={tripDestination}
-                    onChange={(e) => setTripDestination(e.target.value)}
-                    placeholder="Сочи, Алтай, Пхукет..."
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-orange-500" /> Количество дней:
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <motion.button 
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setTripDays(d => Math.max(1, d - 1))}
-                      className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:border-orange-300 cursor-pointer"
-                    >-</motion.button>
-                    <span className="text-xs font-bold text-slate-800 px-2">{tripDays} дней</span>
-                    <motion.button 
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setTripDays(d => d + 1)}
-                      className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:border-orange-300 cursor-pointer"
-                    >+</motion.button>
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2 mt-2 border-t border-slate-100/50 pt-3">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Особенности путешествия:</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: 'withKids', label: 'С детьми', icon: Baby, styles: 'bg-orange-50 text-orange-600 border-orange-100' },
-                      { id: 'isBeach', label: 'Море/Пляж', icon: Sun, styles: 'bg-yellow-50 text-yellow-600 border-yellow-100' },
-                      { id: 'isHike', label: 'Поход/Горы', icon: Tent, styles: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
-                      { id: 'isCold', label: 'Холодно', icon: Snowflake, styles: 'bg-sky-50 text-sky-600 border-sky-100' },
-                      { id: 'isHot', label: 'Жарко', icon: Flame, styles: 'bg-amber-50 text-amber-600 border-amber-100' }
-                    ].map(cond => {
-                      const isActive = tripConditions[cond.id as keyof TripConditions];
-                      const Icon = cond.icon;
-                      return (
-                        <motion.button
-                          key={cond.id}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
-                          className={`py-2 px-1 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
-                            isActive 
-                              ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-sm' 
-                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                          } ${cond.id === 'isHot' ? 'col-span-2' : ''}`}
-                        >
-                          <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
-                          <span>{cond.label}</span>
-                        </motion.button>
-                      );
-                    })}
+                  <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/60 shrink-0">
+                    <MapPin className="w-4 h-4" />
                   </div>
+                  <h2 className="font-extrabold text-sm text-slate-800 uppercase tracking-wide">
+                    Параметры поездки
+                  </h2>
                 </div>
+                <button 
+                  onClick={() => toggleModalCollapse('tripParams')}
+                  className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
+                  title={collapsedModals.tripParams ? "Развернуть блок" : "Свернуть блок"}
+                >
+                  <svg 
+                    viewBox="0 0 24 24" 
+                    className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.tripParams ? '-rotate-90' : ''}`}
+                  >
+                    <path d="M12 16l-6-6h12z"/>
+                  </svg>
+                </button>
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleGenerateWithAI}
-                disabled={isGenerating}
-                className="mt-2 w-full bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white font-extrabold text-xs py-3 px-4 rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-100/50 disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                ) : <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />}
-                {isGenerating ? 'Анализ условий...' : 'Сгенерировать списки'}
-              </motion.button>
-            </section>
-            )}
+              <AnimatePresence initial={false}>
+                {!collapsedModals.tripParams && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden flex flex-col gap-4"
+                  >
+                    <div className="flex flex-col gap-3 pt-1">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Куда отправляемся?</span>
+                        <input 
+                          type="text" 
+                          value={tripDestination}
+                          onChange={(e) => setTripDestination(e.target.value)}
+                          placeholder="Сочи, Алтай, Пхукет..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-orange-500" /> Количество дней:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <motion.button 
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setTripDays(d => Math.max(1, d - 1))}
+                            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:border-orange-300 cursor-pointer"
+                          >-</motion.button>
+                          <span className="text-xs font-bold text-slate-800 px-2">{tripDays} дней</span>
+                          <motion.button 
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setTripDays(d => d + 1)}
+                            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:border-orange-300 cursor-pointer"
+                          >+</motion.button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 mt-2 border-t border-slate-100/50 pt-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Особенности путешествия:</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'withKids', label: 'С детьми', icon: Baby, styles: 'bg-orange-50 text-orange-600 border-orange-100' },
+                            { id: 'isBeach', label: 'Море/Пляж', icon: Sun, styles: 'bg-yellow-50 text-yellow-600 border-yellow-100' },
+                            { id: 'isHike', label: 'Поход/Горы', icon: Tent, styles: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+                            { id: 'isCold', label: 'Холодно', icon: Snowflake, styles: 'bg-sky-50 text-sky-600 border-sky-100' },
+                            { id: 'isHot', label: 'Жарко', icon: Flame, styles: 'bg-amber-50 text-amber-600 border-amber-100' }
+                          ].map(cond => {
+                            const isActive = tripConditions[cond.id as keyof TripConditions];
+                            const Icon = cond.icon;
+                            return (
+                              <motion.button
+                                key={cond.id}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
+                                className={`py-2 px-1 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                                  isActive 
+                                    ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-sm' 
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                } ${cond.id === 'isHot' ? 'col-span-2' : ''}`}
+                              >
+                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
+                                <span>{cond.label}</span>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleGenerateWithAI}
+                      disabled={isGenerating}
+                      className="mt-2 w-full bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white font-extrabold text-xs py-3 px-4 rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-100/50 disabled:opacity-50"
+                    >
+                      {isGenerating ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                      ) : <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />}
+                      {isGenerating ? 'Анализ условий...' : 'Сгенерировать списки'}
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.section>
 
             {/* Список путешественников с круговым прогресс-баром */}
-            {!collapsedModals.travelers && (
-              <section className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 flex flex-col gap-4 border border-white/60 shadow-lg shadow-orange-950/5">
-                <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/60 shrink-0">
-                      <Briefcase className="w-4 h-4" />
-                    </div>
-                    <h2 className="font-extrabold text-sm text-slate-800 uppercase tracking-wide">
-                      Путешественники
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50 px-2.5 py-0.5 rounded-full">{members.length} чел.</span>
-                    {members.length > 0 && (
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleClearAllMembers}
-                        className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-all cursor-pointer border border-rose-100 shrink-0"
-                        title="Удалить всех путешественников"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </motion.button>
-                    )}
-                    <button 
-                      onClick={() => toggleModalCollapse('travelers')}
-                      className="w-7 h-7 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all flex items-center justify-center cursor-pointer border border-transparent hover:border-orange-100/80 shrink-0"
-                      title="Свернуть блок"
-                    >
-                      <Minimize2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-              <div className="flex flex-col gap-3">
-                <AnimatePresence mode="popLayout">
-                  {members.map(m => {
-                    const prog = calculateProgress(m);
-                    const isSelected = m.id === activeMemberId;
-
-                    return (
-                      <motion.div
-                        layout
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        key={m.id}
-                        onClick={() => setActiveMemberId(m.id)}
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${isSelected ? `${m.border} bg-white shadow-md ring-2 ring-orange-500/10` : 'border-slate-200/40 bg-white/40 hover:bg-white/70'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr bg-linear-to-tr ${getMemberGradient(m)} flex items-center justify-center shadow-inner text-white shrink-0`}>
-                            {m.ageGroup === 'pet' ? <PawPrint className="w-5 h-5" /> : m.ageGroup === 'child' ? <Baby className="w-5 h-5" /> : <User className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-xs text-slate-800 flex items-center gap-1.5 flex-wrap">
-                              {m.name}
-                              {m.ageGroup !== 'pet' && (
-                                <span className={`text-[8px] px-1 py-0.5 rounded-md font-bold uppercase ${m.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
-                                  {m.gender === 'male' ? 'М' : 'Ж'}
-                                </span>
-                              )}
-                              <span className={`text-[8px] px-1 py-0.5 rounded-md font-bold uppercase ${m.ageGroup === 'pet' ? 'bg-emerald-50 text-emerald-600' : m.ageGroup === 'adult' ? 'bg-orange-50 text-orange-600 border border-orange-100/40' : 'bg-amber-50 text-amber-600 border border-amber-100/40'}`}>
-                                {m.ageGroup === 'pet' ? 'Пит' : m.ageGroup === 'adult' ? 'Взр' : 'Дет'}
-                              </span>
-                            </h3>
-                            <p className="text-[9px] text-slate-400 font-semibold uppercase">Собрано: {prog}%</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2.5">
-                          {/* Кольцевой индикатор сборов */}
-                          <div className="relative w-8 h-8 flex items-center justify-center">
-                            <svg className="w-full h-full transform -rotate-90">
-                              <circle cx="16" cy="16" r="12" stroke="rgba(0,0,0,0.03)" strokeWidth="2.5" fill="none"/>
-                              <circle cx="16" cy="16" r="12" 
-                                      stroke={prog === 100 ? '#10B981' : '#6366F1'} 
-                                      strokeWidth="2.5" 
-                                      fill="none"
-                                      strokeDasharray={`${2 * Math.PI * 12}`}
-                                      strokeDashoffset={`${2 * Math.PI * 12 * (1 - prog / 100)}`}
-                                      className="transition-all duration-300"
-                              />
-                            </svg>
-                            <span className="absolute text-[8px] font-extrabold text-slate-600">{prog}%</span>
-                          </div>
-
-                          {/* Удаление профиля */}
-                          <motion.button 
-                            whileHover={{ scale: 1.1, color: '#f43f5e' }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={(e) => { e.stopPropagation(); initiateDeleteMember(m.id, m.name); }}
-                            className="text-slate-300 hover:text-rose-500 px-1 py-1 transition-colors cursor-pointer"
-                            title="Удалить путешественника"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-
-              <div className="border-t border-slate-100/50 pt-3 flex flex-col gap-2.5">
-                <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                  <UserPlus className="w-3.5 h-3.5" /> Новый путешественник:
-                </span>
-                
-                <div className="flex flex-col gap-2.5">
-                  {/* Выбор Типа */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">Кто едет:</span>
-                    <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/50">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (newMemberAgeGroup === 'pet') {
-                            setNewMemberAgeGroup('adult');
-                          }
-                        }}
-                        className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center justify-center gap-1.5 ${newMemberAgeGroup !== 'pet' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        <User className="w-3.5 h-3.5" />
-                        <span>Человек</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewMemberAgeGroup('pet')}
-                        className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center justify-center gap-1.5 ${newMemberAgeGroup === 'pet' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        <PawPrint className="w-3.5 h-3.5" />
-                        <span>Питомец</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Выбор Пола и Возраста для Человека */}
-                  {newMemberAgeGroup !== 'pet' && (
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {/* Пол */}
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">Пол:</span>
-                        <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/50">
-                          <button
-                            type="button"
-                            onClick={() => setNewMemberGender('male')}
-                            className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberGender === 'male' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            М
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setNewMemberGender('female')}
-                            className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberGender === 'female' ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            Ж
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Категория */}
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">Категория:</span>
-                        <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/50">
-                          <button
-                            type="button"
-                            onClick={() => setNewMemberAgeGroup('adult')}
-                            className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberAgeGroup === 'adult' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            Взрослый
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setNewMemberAgeGroup('child')}
-                            className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberAgeGroup === 'child' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            Ребенок
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <input 
-                    type="text"
-                    value={newMemberName}
-                    onChange={(e) => setNewMemberName(e.target.value)}
-                    placeholder="Имя путешественника..."
-                    className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
-                  />
-                  <motion.button 
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleAddMember}
-                    className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-xs px-3 rounded-xl uppercase tracking-wider border border-orange-200/50 transition-all cursor-pointer flex items-center justify-center gap-1"
+            <motion.section 
+              drag="y"
+              dragControls={dragControlsTravelers}
+              dragListener={false}
+              dragMomentum={false}
+              dragElastic={0.05}
+              className={`bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 relative select-none flex flex-col ${collapsedModals.travelers ? 'pb-3.5 gap-0' : 'gap-4'}`}
+            >
+              <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {/* Grip drag handle: three vertical dots */}
+                  <div 
+                    onPointerDown={(e) => dragControlsTravelers.start(e)}
+                    className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
+                    title="Перетащить вверх-вниз"
                   >
-                    Добавить
-                  </motion.button>
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  </div>
+
+                  <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/60 shrink-0">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <h2 className="font-extrabold text-sm text-slate-800 uppercase tracking-wide">
+                    Путешественники
+                  </h2>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50 px-2.5 py-0.5 rounded-full">{members.length} чел.</span>
+                  {members.length > 0 && !collapsedModals.travelers && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={handleClearAllMembers}
+                      className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-all cursor-pointer border border-rose-100 shrink-0"
+                      title="Удалить всех путешественников"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </motion.button>
+                  )}
+                  <button 
+                    onClick={() => toggleModalCollapse('travelers')}
+                    className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
+                    title={collapsedModals.travelers ? "Развернуть блок" : "Свернуть блок"}
+                  >
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.travelers ? '-rotate-90' : ''}`}
+                    >
+                      <path d="M12 16l-6-6h12z"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
-            </section>
-            )}
+
+              <AnimatePresence initial={false}>
+                {!collapsedModals.travelers && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden flex flex-col gap-4"
+                  >
+                    <div className="flex flex-col gap-3 pt-1">
+                      <AnimatePresence mode="popLayout">
+                        {members.map(m => {
+                          const prog = calculateProgress(m);
+                          const isSelected = m.id === activeMemberId;
+
+                          return (
+                            <motion.div
+                              layout
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={{ duration: 0.2 }}
+                              key={m.id}
+                              onClick={() => setActiveMemberId(m.id)}
+                              className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${isSelected ? `${m.border} bg-white shadow-md ring-2 ring-orange-500/10` : 'border-slate-200/40 bg-white/40 hover:bg-white/70'}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr bg-linear-to-tr ${getMemberGradient(m)} flex items-center justify-center shadow-inner text-white shrink-0`}>
+                                  {m.ageGroup === 'pet' ? <PawPrint className="w-5 h-5" /> : m.ageGroup === 'child' ? <Baby className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-xs text-slate-800 flex items-center gap-1.5 flex-wrap">
+                                    {m.name}
+                                    {m.ageGroup !== 'pet' && (
+                                      <span className={`text-[8px] px-1 py-0.5 rounded-md font-bold uppercase ${m.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                                        {m.gender === 'male' ? 'М' : 'Ж'}
+                                      </span>
+                                    )}
+                                    <span className={`text-[8px] px-1 py-0.5 rounded-md font-bold uppercase ${m.ageGroup === 'pet' ? 'bg-emerald-50 text-emerald-600' : m.ageGroup === 'adult' ? 'bg-orange-50 text-orange-600 border border-orange-100/40' : 'bg-amber-50 text-amber-600 border border-amber-100/40'}`}>
+                                      {m.ageGroup === 'pet' ? 'Пит' : m.ageGroup === 'adult' ? 'Взр' : 'Дет'}
+                                    </span>
+                                  </h3>
+                                  <p className="text-[9px] text-slate-400 font-semibold uppercase">Собрано: {prog}%</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2.5">
+                                {/* Кольцевой индикатор сборов */}
+                                <div className="relative w-8 h-8 flex items-center justify-center">
+                                  <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="16" cy="16" r="12" stroke="rgba(0,0,0,0.03)" strokeWidth="2.5" fill="none"/>
+                                    <circle cx="16" cy="16" r="12" 
+                                            stroke={prog === 100 ? '#10B981' : '#6366F1'} 
+                                            strokeWidth="2.5" 
+                                            fill="none"
+                                            strokeDasharray={`${2 * Math.PI * 12}`}
+                                            strokeDashoffset={`${2 * Math.PI * 12 * (1 - prog / 100)}`}
+                                            className="transition-all duration-300"
+                                    />
+                                  </svg>
+                                  <span className="absolute text-[8px] font-extrabold text-slate-600">{prog}%</span>
+                                </div>
+
+                                {/* Удаление профиля */}
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, color: '#f43f5e' }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => { e.stopPropagation(); initiateDeleteMember(m.id, m.name); }}
+                                  className="text-slate-300 hover:text-rose-500 px-1 py-1 transition-colors cursor-pointer"
+                                  title="Удалить путешественника"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </motion.button>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </div>
+
+                    <div className="border-t border-slate-100/50 pt-3 flex flex-col gap-2.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <UserPlus className="w-3.5 h-3.5" /> Новый путешественник:
+                      </span>
+                      
+                      <div className="flex flex-col gap-2.5">
+                        {/* Выбор Типа */}
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Кто едет:</span>
+                          <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/50">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (newMemberAgeGroup === 'pet') {
+                                  setNewMemberAgeGroup('adult');
+                                }
+                              }}
+                              className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center justify-center gap-1.5 ${newMemberAgeGroup !== 'pet' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                              <User className="w-3.5 h-3.5" />
+                              <span>Человек</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewMemberAgeGroup('pet')}
+                              className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center justify-center gap-1.5 ${newMemberAgeGroup === 'pet' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                              <PawPrint className="w-3.5 h-3.5" />
+                              <span>Питомец</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Выбор Пола и Возраста для Человека */}
+                        {newMemberAgeGroup !== 'pet' && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {/* Пол */}
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">Пол:</span>
+                              <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/50">
+                                <button
+                                  type="button"
+                                  onClick={() => setNewMemberGender('male')}
+                                  className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberGender === 'male' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                  М
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewMemberGender('female')}
+                                  className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberGender === 'female' ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                  Ж
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Категория */}
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">Категория:</span>
+                              <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200/50">
+                                <button
+                                  type="button"
+                                  onClick={() => setNewMemberAgeGroup('adult')}
+                                  className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberAgeGroup === 'adult' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                  Взрослый
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewMemberAgeGroup('child')}
+                                  className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${newMemberAgeGroup === 'child' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                  Ребенок
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input 
+                          type="text"
+                          value={newMemberName}
+                          onChange={(e) => setNewMemberName(e.target.value)}
+                          placeholder="Имя путешественника..."
+                          className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                        />
+                        <motion.button 
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={handleAddMember}
+                          className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-xs px-3 rounded-xl uppercase tracking-wider border border-orange-200/50 transition-all cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          Добавить
+                        </motion.button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.section>
 
           </aside>
 
@@ -1928,38 +2074,32 @@ export default function App() {
                   </p>
                 </div>
               </motion.div>
-            ) : collapsedModals.suitcase ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white/40 backdrop-blur-md rounded-3xl p-12 border border-slate-200/30 shadow-md text-center flex flex-col items-center justify-center gap-4 min-h-[300px] cursor-default"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/40 shadow-sm animate-bounce">
-                  <Briefcase className="w-6 h-6 animate-pulse" />
-                </div>
-                <div className="max-w-xs flex flex-col gap-1.5">
-                  <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Чемодан {activeMember.name} свёрнут</h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Вы свернули чемодан в панель внизу. Вы можете развернуть его в любой момент кнопкой во вкладке дока или кликнув ниже.
-                  </p>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => toggleModalCollapse('suitcase')}
-                  className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[10px] py-2 px-4 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer"
-                >
-                  Развернуть чемодан
-                </motion.button>
-              </motion.div>
             ) : (
-              <>
+              <motion.div
+                drag="y"
+                dragControls={dragControlsSuitcase}
+                dragListener={false}
+                dragMomentum={false}
+                dragElastic={0.05}
+                className="flex flex-col gap-6"
+              >
                 {/* ЕДИНЫЙ ЛИПКИЙ КОНТЕНТ ХЕДЕРА: Имя путешественника, прогресс и переключатель вкладок всегда на виду */}
-                <div className={`sticky top-2 sm:top-4 z-30 flex flex-col gap-4 bg-white/95 backdrop-blur-xl rounded-3xl p-4 sm:p-5 border ${activeMember?.border || 'border-slate-200'} shadow-xl shadow-orange-950/10 transition-all duration-300`}>
+                <div className={`sticky top-2 sm:top-4 z-30 flex flex-col bg-white/95 backdrop-blur-xl rounded-3xl border ${activeMember?.border || 'border-slate-200'} shadow-xl shadow-orange-950/10 transition-all duration-300 ${collapsedModals.suitcase ? 'p-4' : 'p-4 sm:p-5 gap-4'}`}>
               
               {/* Верхняя строка: Имя, аватар, прогресс-бар */}
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
+                  {/* Grip drag handle: three vertical dots */}
+                  <div 
+                    onPointerDown={(e) => dragControlsSuitcase.start(e)}
+                    className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
+                    title="Перетащить вверх-вниз"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  </div>
+
                   <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr bg-linear-to-tr ${activeMember ? getMemberGradient(activeMember) : 'from-orange-400 to-amber-500'} flex items-center justify-center shadow-md text-white shrink-0`}>
                     {activeMember?.ageGroup === 'pet' ? <PawPrint className="w-6 h-6" /> : activeMember?.ageGroup === 'child' ? <Baby className="w-6 h-6" /> : <User className="w-6 h-6" />}
                   </div>
@@ -1998,10 +2138,15 @@ export default function App() {
                   </div>
                   <button 
                     onClick={() => toggleModalCollapse('suitcase')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
-                    title="Свернуть чемодан"
+                    className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
+                    title={collapsedModals.suitcase ? "Развернуть чемодан" : "Свернуть чемодан"}
                   >
-                    <Minimize2 className="w-4 h-4" />
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.suitcase ? '-rotate-90' : ''}`}
+                    >
+                      <path d="M12 16l-6-6h12z"/>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -2095,7 +2240,16 @@ export default function App() {
             </div>
 
             {/* СПИСОК ВЕЩЕЙ */}
-            <section className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 flex flex-col gap-4 border border-white/60 shadow-lg shadow-orange-950/5">
+            <AnimatePresence initial={false}>
+              {!collapsedModals.suitcase && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <section className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 flex flex-col gap-4 border border-white/60 shadow-lg shadow-orange-950/5">
 
               {(!activeMember?.lists || Object.keys(activeMember.lists).length === 0) ? (
                 <motion.div 
@@ -2233,8 +2387,11 @@ export default function App() {
                 </div>
               )}
             </section>
-              </>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
           </main>
 
