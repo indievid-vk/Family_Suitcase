@@ -468,10 +468,14 @@ export default function App() {
   const [isPwaUpdateAvailable, setIsPwaUpdateAvailable] = useState<boolean>(() => (window as any).pwaUpdateAvailable || false);
   const [isPwaModalOpen, setIsPwaModalOpen] = useState<boolean>(false);
   const [pwaModalPlatform, setPwaModalPlatform] = useState<'android' | 'ios' | 'desktop'>('android');
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(() => {
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-    return isStandalone && !localStorage.getItem('hasSeenWelcome');
-  });
+    if (isStandalone && !localStorage.getItem('hasSeenWelcome')) {
+      setIsWelcomeModalOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isWelcomeModalOpen) {
@@ -492,13 +496,16 @@ export default function App() {
   useEffect(() => {
     const checkVersion = async () => {
       try {
-        const response = await fetch('/version.json?cache-bust=' + Date.now());
+        const response = await fetch('./version.json?cache-bust=' + Date.now());
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         if (data.version !== APP_VERSION) {
           setIsPwaUpdateAvailable(true);
         }
       } catch (e) {
-        console.error('Failed to check version', e);
+        console.warn('Could not check version, skipping...', e);
       }
     };
     
