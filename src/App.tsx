@@ -1461,23 +1461,24 @@ export default function App() {
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className="bg-white/95 rounded-3xl p-6 max-w-2xl w-full border border-white flex flex-col gap-4 relative text-slate-800 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar cursor-move"
+                className="bg-white/95 rounded-3xl max-w-2xl w-full border border-white flex flex-col relative text-slate-800 shadow-2xl max-h-[90vh] overflow-hidden cursor-move"
               >
-                  <button 
-                    onClick={() => toggleModalCollapse('about')}
-                    className="absolute top-4 right-12 text-slate-400 hover:text-orange-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                    title="Свернуть"
-                  >
-                    <Minimize2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => setIsAboutModalOpen(false)}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  
-                  <div className="border-b border-slate-100 pb-3 cursor-move">
+                  {/* Закрепленная плашка с названием и кнопками управления */}
+                  <div className="p-6 pb-3 border-b border-slate-100 cursor-move relative flex-shrink-0">
+                    <button 
+                      onClick={() => toggleModalCollapse('about')}
+                      className="absolute top-5 right-12 text-slate-400 hover:text-orange-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Свернуть"
+                    >
+                      <Minimize2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setIsAboutModalOpen(false)}
+                      className="absolute top-5 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                    
                     <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
                       <Info className="w-4 h-4 text-orange-500" />
                       О приложении
@@ -1485,7 +1486,8 @@ export default function App() {
                     <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Умный планировщик «Семейный Чемодан»</p>
                   </div>
 
-                  <div className="flex flex-col gap-5 text-xs text-slate-600 leading-relaxed cursor-default" onClick={(e) => e.stopPropagation()}>
+                  {/* Скроллируемая область контента */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pt-4 cursor-default flex flex-col gap-5 text-xs text-slate-600 leading-relaxed" onClick={(e) => e.stopPropagation()}>
                     <div>
                       <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">О приложении</h4>
                       <p>
