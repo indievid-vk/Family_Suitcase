@@ -14,8 +14,16 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Pre-caching offline assets');
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
+});
+
+// Слушаем сообщения от клиента (для принудительной активации обновления)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[Service Worker] Получена команда SKIP_WAITING, активируем новую версию');
+    self.skipWaiting();
+  }
 });
 
 // Активация и удаление старых версий кэша
