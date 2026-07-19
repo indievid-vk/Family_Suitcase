@@ -501,26 +501,23 @@ export default function App() {
     };
 
     // Обобщенный слушатель любого первого жеста пользователя
-    const handleGestureWithPrompt = () => {
+    const handleGestureWithPrompt = (e?: Event) => {
+      console.log(`[PWA] Зафиксирован жест пользователя (${e ? e.type : 'unknown'}), вызываем нативную установку...`);
       const isPrompted = triggerSystemPrompt();
       if (isPrompted) {
-        // Если системный prompt успешно показан, удаляем все глобальные слушатели жестов
+        console.log('[PWA] Системный prompt успешно инициирован. Удаляем слушатели жестов.');
         removeGestureListeners();
       }
     };
 
     const addGestureListeners = () => {
-      document.addEventListener('click', handleGestureWithPrompt);
-      document.addEventListener('touchstart', handleGestureWithPrompt);
-      document.addEventListener('pointerdown', handleGestureWithPrompt);
-      document.addEventListener('mousedown', handleGestureWithPrompt);
+      document.addEventListener('click', handleGestureWithPrompt, { passive: true });
+      document.addEventListener('touchend', handleGestureWithPrompt, { passive: true });
     };
 
     const removeGestureListeners = () => {
       document.removeEventListener('click', handleGestureWithPrompt);
-      document.removeEventListener('touchstart', handleGestureWithPrompt);
-      document.removeEventListener('pointerdown', handleGestureWithPrompt);
-      document.removeEventListener('mousedown', handleGestureWithPrompt);
+      document.removeEventListener('touchend', handleGestureWithPrompt);
     };
 
     const handleInstallReady = () => {

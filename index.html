@@ -33,6 +33,16 @@
       // Регистрируем Service Worker только на верхнем уровне (не во фрейме), чтобы избежать ошибок в превью AI Studio
       if ('serviceWorker' in navigator && window.self === window.top) {
         window.addEventListener('load', () => {
+          // Перезагрузка страницы при изменении контроллера (когда новые файлы активированы)
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+              refreshing = true;
+              console.log('[PWA] Контроллер изменился, перезагружаем страницу...');
+              window.location.reload();
+            }
+          });
+
           navigator.serviceWorker.register('./sw.js')
             .then((reg) => {
               console.log('[PWA] Service Worker зарегистрирован на область:', reg.scope);
