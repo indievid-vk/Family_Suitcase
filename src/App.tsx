@@ -478,25 +478,55 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const triggerSystemPrompt = async () => {
+    const triggerSystemPrompt = () => {
       const promptEvent = (window as any).deferredPrompt;
       if (promptEvent && !isPwaInstalled && pwaModalPlatform !== 'ios') {
         try {
-          console.log('[PWA] Attempting auto-prompt...');
-          await promptEvent.prompt();
-          const { outcome } = await promptEvent.userChoice;
-          console.log(`[PWA] Auto-prompt response: ${outcome}`);
-          (window as any).deferredPrompt = null;
-          setIsInstallPromptAvailable(false);
+          console.log('[PWA] Synchronously triggering system install prompt...');
+          promptEvent.prompt();
+          promptEvent.userChoice.then((choiceResult: any) => {
+            console.log(`[PWA] Auto-prompt response: ${choiceResult.outcome}`);
+            (window as any).deferredPrompt = null;
+            setIsInstallPromptAvailable(false);
+          }).catch((err: any) => {
+            console.warn('[PWA] Error handling userChoice outcome:', err);
+          });
+          return true;
         } catch (err) {
-          console.warn('[PWA] Auto-prompt was blocked or failed:', err);
+          console.warn('[PWA] Auto-prompt invocation failed:', err);
+          return false;
         }
       }
+      return false;
+    };
+
+    // Обобщенный слушатель любого первого жеста пользователя
+    const handleGestureWithPrompt = () => {
+      const isPrompted = triggerSystemPrompt();
+      if (isPrompted) {
+        // Если системный prompt успешно показан, удаляем все глобальные слушатели жестов
+        removeGestureListeners();
+      }
+    };
+
+    const addGestureListeners = () => {
+      document.addEventListener('click', handleGestureWithPrompt);
+      document.addEventListener('touchstart', handleGestureWithPrompt);
+      document.addEventListener('pointerdown', handleGestureWithPrompt);
+      document.addEventListener('mousedown', handleGestureWithPrompt);
+    };
+
+    const removeGestureListeners = () => {
+      document.removeEventListener('click', handleGestureWithPrompt);
+      document.removeEventListener('touchstart', handleGestureWithPrompt);
+      document.removeEventListener('pointerdown', handleGestureWithPrompt);
+      document.removeEventListener('mousedown', handleGestureWithPrompt);
     };
 
     const handleInstallReady = () => {
       setIsInstallPromptAvailable(true);
-      triggerSystemPrompt();
+      // При получении события готовности, гарантируем активацию слушателей жестов
+      addGestureListeners();
     };
 
     const handleUpdateAvailable = () => {
@@ -507,29 +537,20 @@ export default function App() {
     window.addEventListener('pwa-install-ready', handleInstallReady);
     window.addEventListener('pwa-update-available', handleUpdateAvailable);
 
+    // Добавляем слушатели сразу на старте, чтобы поймать первый же тап/клик, если prompt уже доступен
+    addGestureListeners();
+
     if ((window as any).deferredPrompt) {
       setIsInstallPromptAvailable(true);
-      triggerSystemPrompt();
     }
     if ((window as any).pwaUpdateAvailable) {
       setIsPwaUpdateAvailable(true);
     }
 
-    // fallback user interaction listener for auto-prompt
-    const handleFirstGesture = () => {
-      triggerSystemPrompt();
-      document.removeEventListener('click', handleFirstGesture);
-      document.removeEventListener('touchstart', handleFirstGesture);
-    };
-
-    document.addEventListener('click', handleFirstGesture);
-    document.addEventListener('touchstart', handleFirstGesture);
-
     return () => {
       window.removeEventListener('pwa-install-ready', handleInstallReady);
       window.removeEventListener('pwa-update-available', handleUpdateAvailable);
-      document.removeEventListener('click', handleFirstGesture);
-      document.removeEventListener('touchstart', handleFirstGesture);
+      removeGestureListeners();
     };
   }, [isPwaInstalled, pwaModalPlatform]);
 
