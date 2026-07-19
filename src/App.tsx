@@ -468,7 +468,10 @@ export default function App() {
   const [isPwaUpdateAvailable, setIsPwaUpdateAvailable] = useState<boolean>(() => (window as any).pwaUpdateAvailable || false);
   const [isPwaModalOpen, setIsPwaModalOpen] = useState<boolean>(false);
   const [pwaModalPlatform, setPwaModalPlatform] = useState<'android' | 'ios' | 'desktop'>('android');
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(() => !localStorage.getItem('hasSeenWelcome'));
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    return isStandalone && !localStorage.getItem('hasSeenWelcome');
+  });
 
   useEffect(() => {
     if (isWelcomeModalOpen) {
