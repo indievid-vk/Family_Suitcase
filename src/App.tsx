@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import confetti from 'canvas-confetti';
 import {
   Share2,
   Trash2,
@@ -46,6 +47,8 @@ import {
   Maximize2
 } from 'lucide-react';
 import { Item, Lists, Member, TripConditions, Gender, AgeGroup } from './types';
+
+const APP_VERSION = "0.0.1";
 
 const DEFAULT_ITEMS = {
   adult_male: {
@@ -465,6 +468,47 @@ export default function App() {
   const [isPwaUpdateAvailable, setIsPwaUpdateAvailable] = useState<boolean>(() => (window as any).pwaUpdateAvailable || false);
   const [isPwaModalOpen, setIsPwaModalOpen] = useState<boolean>(false);
   const [pwaModalPlatform, setPwaModalPlatform] = useState<'android' | 'ios' | 'desktop'>('android');
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(() => !localStorage.getItem('hasSeenWelcome'));
+
+  useEffect(() => {
+    if (isWelcomeModalOpen) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+  }, [isWelcomeModalOpen]);
+
+  const closeWelcome = () => {
+    setIsWelcomeModalOpen(false);
+    localStorage.setItem('hasSeenWelcome', 'true');
+  };
+
+  // Check for PWA updates periodically
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const response = await fetch('/version.json?cache-bust=' + Date.now());
+        const data = await response.json();
+        if (data.version !== APP_VERSION) {
+          setIsPwaUpdateAvailable(true);
+        }
+      } catch (e) {
+        console.error('Failed to check version', e);
+      }
+    };
+    
+    checkVersion();
+
+    const interval = setInterval(() => {
+      if ((window as any).pwaUpdateAvailable && !isPwaUpdateAvailable) {
+        setIsPwaUpdateAvailable(true);
+      }
+      checkVersion();
+    }, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [isPwaUpdateAvailable]);
 
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase();
@@ -2395,6 +2439,39 @@ export default function App() {
             >
               <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
               <span>{notification}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ПРИВЕТСТВЕННОЕ ОКНО */}
+        <AnimatePresence>
+          {isWelcomeModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center gap-6"
+              >
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+                  <Sparkles className="w-8 h-8" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-xl font-extrabold text-slate-900">Привет!</h2>
+                  <p className="text-slate-600">Приложение Семейный чемодан установлено</p>
+                </div>
+                <button
+                  onClick={closeWelcome}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-2xl transition-colors"
+                >
+                  Начать
+                </button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
