@@ -595,8 +595,6 @@ export default function App() {
   };
 
   // Контроллеры перетаскивания для каждого окна
-  const dragControlsTripParams = useDragControls();
-  const dragControlsTravelers = useDragControls();
   const dragControlsSuitcase = useDragControls();
   const dragControlsExport = useDragControls();
   const dragControlsAbout = useDragControls();
@@ -1335,7 +1333,7 @@ export default function App() {
         
         {/* МОДАЛКИ PWA: УСТАНОВКА И ОБНОВЛЕНИЯ */}
         <AnimatePresence>
-          {isPwaModalOpen && !collapsedModals.pwa && (
+          {isPwaModalOpen && (
             <motion.div 
               key="pwa-expanded"
               initial={{ opacity: 0 }}
@@ -1681,25 +1679,10 @@ export default function App() {
             
             {/* Параметры поездки */}
             <motion.section 
-              drag="y"
-              dragControls={dragControlsTripParams}
-              dragListener={false}
-              dragMomentum={false}
-              dragElastic={0.05}
               className={`bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 relative select-none flex flex-col ${collapsedModals.tripParams ? 'pb-3.5 gap-0' : 'gap-4'}`}
             >
               <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {/* Grip drag handle: three vertical dots */}
-                  <div 
-                    onPointerDown={(e) => dragControlsTripParams.start(e)}
-                    className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
-                    title="Перетащить вверх-вниз"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                  </div>
 
                   <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/60 shrink-0">
                     <MapPin className="w-4 h-4" />
@@ -1814,25 +1797,10 @@ export default function App() {
 
             {/* Список путешественников с круговым прогресс-баром */}
             <motion.section 
-              drag="y"
-              dragControls={dragControlsTravelers}
-              dragListener={false}
-              dragMomentum={false}
-              dragElastic={0.05}
               className={`bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 relative select-none flex flex-col ${collapsedModals.travelers ? 'pb-3.5 gap-0' : 'gap-4'}`}
             >
               <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {/* Grip drag handle: three vertical dots */}
-                  <div 
-                    onPointerDown={(e) => dragControlsTravelers.start(e)}
-                    className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
-                    title="Перетащить вверх-вниз"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                  </div>
 
                   <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/60 shrink-0">
                     <Briefcase className="w-4 h-4" />
@@ -2415,224 +2383,6 @@ export default function App() {
             <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
           </motion.button>
         )}
-
-        {/* ПАНЕЛЬ СВЁРНУТЫХ ОКОН (ДОК) */}
-        <div className="fixed bottom-6 left-6 z-[9999] flex flex-col sm:flex-row gap-3 pointer-events-none max-w-[calc(100vw-3rem)] select-none">
-          <AnimatePresence mode="popLayout">
-            {isAboutModalOpen && collapsedModals.about && (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragElastic={0.05}
-                key="about-collapsed"
-                layoutId="about-modal-container"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="pointer-events-auto bg-white/95 backdrop-blur-md border border-orange-100 shadow-2xl rounded-2xl p-3 flex items-center gap-3 cursor-move select-none max-w-xs shrink-0"
-              >
-                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100/50 flex items-center justify-center text-orange-600 shrink-0">
-                  <Info className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-xs font-extrabold text-slate-800 line-clamp-1">О приложении</span>
-                  <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Свёрнуто</span>
-                </div>
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-2 shrink-0">
-                  <button
-                    onClick={() => toggleModalCollapse('about')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors cursor-pointer"
-                    title="Развернуть"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsAboutModalOpen(false);
-                      setCollapsedModals(prev => ({ ...prev, about: false }));
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                    title="Закрыть"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {isExportModalOpen && collapsedModals.export && (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragElastic={0.05}
-                key="export-collapsed"
-                layoutId="export-modal-container"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="pointer-events-auto bg-white/95 backdrop-blur-md border border-orange-100 shadow-2xl rounded-2xl p-3 flex items-center gap-3 cursor-move select-none max-w-xs shrink-0"
-              >
-                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100/50 flex items-center justify-center text-orange-600 shrink-0">
-                  <Share2 className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-xs font-extrabold text-slate-800 line-clamp-1">Поделиться сборами</span>
-                  <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Свёрнуто</span>
-                </div>
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-2 shrink-0">
-                  <button
-                    onClick={() => toggleModalCollapse('export')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors cursor-pointer"
-                    title="Развернуть"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsExportModalOpen(false);
-                      setCollapsedModals(prev => ({ ...prev, export: false }));
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                    title="Закрыть"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {isPwaModalOpen && collapsedModals.pwa && (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragElastic={0.05}
-                key="pwa-collapsed"
-                layoutId="pwa-modal-container"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="pointer-events-auto bg-white/95 backdrop-blur-md border border-orange-100 shadow-2xl rounded-2xl p-3 flex items-center gap-3 cursor-move select-none max-w-xs shrink-0"
-              >
-                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100/50 flex items-center justify-center text-orange-600 shrink-0">
-                  <Smartphone className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-xs font-extrabold text-slate-800 line-clamp-1">Установка PWA</span>
-                  <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Свёрнуто</span>
-                </div>
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-2 shrink-0">
-                  <button
-                    onClick={() => toggleModalCollapse('pwa')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors cursor-pointer"
-                    title="Развернуть"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsPwaModalOpen(false);
-                      setCollapsedModals(prev => ({ ...prev, pwa: false }));
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                    title="Закрыть"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {collapsedModals.tripParams && (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragElastic={0.05}
-                key="trip-params-collapsed"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="pointer-events-auto bg-white/95 backdrop-blur-md border border-orange-100 shadow-2xl rounded-2xl p-3 flex items-center gap-3 cursor-move select-none max-w-xs shrink-0"
-              >
-                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100/50 flex items-center justify-center text-orange-600 shrink-0">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-xs font-extrabold text-slate-800 line-clamp-1">Параметры поездки</span>
-                  <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Свёрнуто</span>
-                </div>
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-2 shrink-0">
-                  <button
-                    onClick={() => toggleModalCollapse('tripParams')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors cursor-pointer"
-                    title="Развернуть"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {collapsedModals.travelers && (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragElastic={0.05}
-                key="travelers-collapsed"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="pointer-events-auto bg-white/95 backdrop-blur-md border border-orange-100 shadow-2xl rounded-2xl p-3 flex items-center gap-3 cursor-move select-none max-w-xs shrink-0"
-              >
-                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100/50 flex items-center justify-center text-orange-600 shrink-0">
-                  <Briefcase className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-xs font-extrabold text-slate-800 line-clamp-1">Путешественники</span>
-                  <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Свёрнуто</span>
-                </div>
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-2 shrink-0">
-                  <button
-                    onClick={() => toggleModalCollapse('travelers')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors cursor-pointer"
-                    title="Развернуть"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {collapsedModals.suitcase && activeMember && (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragElastic={0.05}
-                key="suitcase-collapsed"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="pointer-events-auto bg-white/95 backdrop-blur-md border border-orange-100 shadow-2xl rounded-2xl p-3 flex items-center gap-3 cursor-move select-none max-w-xs shrink-0"
-              >
-                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100/50 flex items-center justify-center text-orange-600 shrink-0">
-                  <Briefcase className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-[120px]">
-                  <span className="text-xs font-extrabold text-slate-800 line-clamp-1">Чемодан: {activeMember.name}</span>
-                  <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Свёрнуто</span>
-                </div>
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-2 shrink-0">
-                  <button
-                    onClick={() => toggleModalCollapse('suitcase')}
-                    className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors cursor-pointer"
-                    title="Развернуть"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
         {/* ТРЕЙ-НОТИФИКАЦИЯ */}
         <AnimatePresence>
