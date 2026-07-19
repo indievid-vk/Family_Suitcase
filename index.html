@@ -14,7 +14,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
     <script>
       // 1. Перехват install prompt для Android/PC
       window.deferredPrompt = null;
@@ -33,7 +33,7 @@
       // Регистрируем Service Worker только на верхнем уровне (не во фрейме), чтобы избежать ошибок в превью AI Studio
       if ('serviceWorker' in navigator && window.self === window.top) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
+          navigator.serviceWorker.register('./sw.js')
             .then((reg) => {
               console.log('[PWA] Service Worker зарегистрирован на область:', reg.scope);
 
