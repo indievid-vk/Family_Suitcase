@@ -1,0 +1,26 @@
+{
+  "name": "Семейный Чемодан — Умный Планировщик Сборов",
+  "short_name": "Чемодан",
+  "description": "Умный планировщик дорожных сборов для всей семьи с поддержкой ИИ и офлайн-режимом.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F1F5F9",
+  "theme_color": "#6366F1",
+  "categories": ["travel", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
