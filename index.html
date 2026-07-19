@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Семейный Чемодан — Умный Планировщик Сборов</title>
+    <meta name="theme-color" content="#6366F1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Чемодан" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // 1. Перехват install prompt для Android/PC
+      window.deferredPrompt = null;
+      window.pwaPopupActive = false;
+      window.pwaUpdateAvailable = false;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+      });
+
+      // Определение режима установки (standalone)
+      window.isAppInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+      // Регистрируем Service Worker только на верхнем уровне (не во фрейме), чтобы избежать ошибок в превью AI Studio
+      if ('serviceWorker' in navigator && window.self === window.top) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => {
+              console.log('[PWA] Service Worker зарегистрирован на область:', reg.scope);
+
+              // Проверка наличия ожидающего обновления при загрузке
+              if (reg.waiting) {
+                window.pwaUpdateAvailable = true;
+                window.dispatchEvent(new CustomEvent('pwa-update-available'));
+              }
+
+              // Следим за процессом установки нового Service Worker
+              reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      window.pwaUpdateAvailable = true;
+                      window.dispatchEvent(new CustomEvent('pwa-update-available'));
+                    }
+                  });
+                }
+              });
+
+              // Активный поллинг обновлений каждые 15 минут
+              setInterval(() => {
+                reg.update().catch(() => {});
+              }, 15 * 60 * 1000);
+
+              // Проверка при выходе приложения из фонового режима
+              document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                  reg.update().catch(() => {});
+                }
+              });
+            })
+            .catch((err) => {
+              console.error('[PWA] Не удалось зарегистрировать Service Worker:', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Градиент фона -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="50%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+    
+    <!-- Градиент чемодана -->
+    <linearGradient id="suitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+    
+    <!-- Мягкая тень -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#4F46E5" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Круглый фон с градиентом -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+
+  <!-- Группа с тенью -->
+  <g filter="url(#shadow)">
+    <!-- Ручка чемодана -->
+    <path d="M200 140 V100 C200 86.7 210.7 76 224 76 H288 C301.3 76 312 86.7 312 100 V140" 
+          fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" />
+    
+    <!-- Выдвижные металлические стержни -->
+    <rect x="216" y="120" width="16" height="40" rx="4" fill="#94A3B8" />
+    <rect x="280" y="120" width="16" height="40" rx="4" fill="#94A3B8" />
+
+    <!-- Корпус чемодана -->
+    <rect x="120" y="140" width="272" height="260" rx="48" fill="url(#suitGrad)" />
+    
+    <!-- Защитные уголки -->
+    <path d="M120 200 V188 C120 161.5 141.5 140 168 140 H180" fill="none" stroke="#6366F1" stroke-width="12" stroke-linecap="round" />
+    <path d="M392 200 V188 C392 161.5 370.5 140 344 140 H332" fill="none" stroke="#6366F1" stroke-width="12" stroke-linecap="round" />
+    
+    <!-- Горизонтальные стильные полосы на чемодане (риgroups) -->
+    <rect x="150" y="200" width="212" height="16" rx="8" fill="#CBD5E1" opacity="0.6" />
+    <rect x="150" y="250" width="212" height="16" rx="8" fill="#CBD5E1" opacity="0.6" />
+    <rect x="150" y="300" width="212" height="16" rx="8" fill="#CBD5E1" opacity="0.6" />
+    
+    <!-- Наклейка "Сердечко" -->
+    <path d="M280 230 C270 215 250 215 240 225 C230 215 210 215 200 225 C190 235 190 255 210 275 L240 300 L270 275 C290 255 290 235 280 230 Z" 
+          fill="#EC4899" />
+          
+    <!-- Наклейка "Самолетик" / Геометрия -->
+    <polygon points="310,270 340,290 325,295 345,315 315,305 310,315 310,270" fill="#0EA5E9" transform="rotate(-15 320 290)" />
+
+    <!-- Колесики -->
+    <circle cx="170" cy="412" r="20" fill="#1E293B" />
+    <circle cx="170" cy="412" r="8" fill="#94A3B8" />
+    <circle cx="342" cy="412" r="20" fill="#1E293B" />
+    <circle cx="342" cy="412" r="8" fill="#94A3B8" />
+  </g>
+</svg>
