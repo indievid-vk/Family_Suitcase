@@ -1221,15 +1221,23 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* ШАПКА ПРИЛОЖЕНИЯ */}
-        <header className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-700 border border-orange-200/50 shrink-0">
-              <Briefcase className="w-6 h-6" />
+        {/* ШАПКА ПРИЛОЖЕНИЯ (ЧЕМОДАН) */}
+        <motion.header 
+          key={activeMemberId}
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="relative bg-white/80 backdrop-blur-xl rounded-[2rem] p-6 border-4 border-orange-200/50 shadow-2xl shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 mt-6"
+        >
+          {/* Handle of the suitcase */}
+          <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-6 bg-orange-900/20 rounded-t-xl border-t-4 border-x-4 border-orange-900/10"></div>
+          
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-orange-800 border border-orange-300/50 shrink-0 shadow-inner">
+              <Briefcase className="w-8 h-8" />
             </div>
             <div>
-              <h1 className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Семейный Чемодан</h1>
-              <p className="text-xs text-orange-600 font-bold tracking-wide uppercase">Умный планировщик дорожных сборов</p>
+              <h1 className="font-extrabold text-3xl tracking-tighter bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Семейный Чемодан</h1>
+              <p className="text-sm text-orange-700 font-bold tracking-wide uppercase mt-1">Умный планировщик дорожных сборов</p>
             </div>
           </div>
 
@@ -1260,7 +1268,7 @@ export default function App() {
               <Info className="w-5 h-5" />
             </motion.button>
           </div>
-        </header>
+        </motion.header>
 
         {/* МОДАЛКА ЭКСПОРТА / ИМПОРТА */}
         <AnimatePresence>
