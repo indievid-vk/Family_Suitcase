@@ -632,6 +632,12 @@ export default function App() {
   // Безопасные кастомные модалки
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState<boolean>(false);
+  const [headerMounted, setHeaderMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setHeaderMounted(true);
+  }, []);
+
   const [collapsedModals, setCollapsedModals] = useState<Record<string, boolean>>({
     about: false,
     export: false,
@@ -659,6 +665,73 @@ export default function App() {
   const [isDeleteAllConfirmOpen, setIsDeleteAllConfirmOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const headerRef = useRef<HTMLElement>(null);
+  const travelersRef = useRef<HTMLElement>(null);
+  const suitcaseRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let rAFId: number;
+
+    const handleScroll = () => {
+      if (!headerRef.current) return;
+
+      const header = headerRef.current;
+      const headerRect = header.getBoundingClientRect();
+      const headerHeight = headerRect.height;
+      const stickyTopOffset = 16;
+      const headerBottom = stickyTopOffset + headerHeight;
+
+      let overlap = 0;
+
+      // Check collision with Travelers block (if rendered)
+      if (travelersRef.current) {
+        const travelersRect = travelersRef.current.getBoundingClientRect();
+        const travelersTop = travelersRect.top;
+        if (travelersTop < headerBottom) {
+          overlap = Math.max(overlap, headerBottom - travelersTop);
+        }
+      }
+
+      // Check collision with Selected Traveler's Suitcase block (if rendered)
+      if (suitcaseRef.current) {
+        const suitcaseRect = suitcaseRef.current.getBoundingClientRect();
+        const suitcaseTop = suitcaseRect.top;
+        if (suitcaseTop < headerBottom) {
+          overlap = Math.max(overlap, headerBottom - suitcaseTop);
+        }
+      }
+
+      if (overlap > 0) {
+        const maxShift = headerHeight + stickyTopOffset + 32;
+        const newY = -Math.min(overlap, maxShift);
+        header.style.transform = `translateY(${newY}px)`;
+      } else {
+        header.style.transform = 'translateY(0px)';
+      }
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(rAFId);
+      rAFId = requestAnimationFrame(handleScroll);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    
+    // Immediate checks and fallback intervals to handle mounts and lazy content loads
+    handleScroll();
+    const timer = setTimeout(handleScroll, 50);
+    const timer2 = setTimeout(handleScroll, 150);
+    const timer3 = setTimeout(handleScroll, 300);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(rAFId);
+      clearTimeout(timer);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [members, activeMemberId]);
 
   const handleExportToFile = () => {
     try {
@@ -1222,11 +1295,9 @@ export default function App() {
         </AnimatePresence>
 
         {/* ШАПКА ПРИЛОЖЕНИЯ (ЧЕМОДАН) */}
-        <motion.header 
-          key={activeMemberId}
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="relative bg-white/80 backdrop-blur-xl rounded-[2rem] p-6 border-4 border-orange-200/50 shadow-2xl shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 mt-6"
+        <header 
+          ref={headerRef}
+          className={`sticky top-4 z-40 bg-white/80 backdrop-blur-xl rounded-[2rem] p-6 border-4 border-orange-200/50 shadow-2xl shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 mt-6 transition-opacity duration-500 ${headerMounted ? 'opacity-100' : 'opacity-0'}`}
         >
           {/* Handle of the suitcase */}
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-6 bg-orange-900/20 rounded-t-xl border-t-4 border-x-4 border-orange-900/10"></div>
@@ -1268,7 +1339,7 @@ export default function App() {
               <Info className="w-5 h-5" />
             </motion.button>
           </div>
-        </motion.header>
+        </header>
 
         {/* МОДАЛКА ЭКСПОРТА / ИМПОРТА */}
         <AnimatePresence>
@@ -1737,7 +1808,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
           
           {/* ЛЕВАЯ ПАНЕЛЬ: КОНФИГУРАТОР И ЧЛЕНЫ СЕМЬИ */}
-          <aside className="lg:col-span-4 lg:sticky lg:top-4 h-fit max-h-[92vh] overflow-y-auto pr-1 flex flex-col gap-6 custom-scrollbar">
+          <aside className="lg:col-span-4 lg:sticky lg:top-4 h-fit lg:max-h-[92vh] lg:overflow-y-auto pr-1 flex flex-col gap-6 custom-scrollbar">
             
             {/* Параметры поездки */}
             <motion.section 
@@ -1840,18 +1911,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleGenerateWithAI}
-                      disabled={isGenerating}
-                      className="mt-2 w-full bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white font-extrabold text-xs py-3 px-4 rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-100/50 disabled:opacity-50"
-                    >
-                      {isGenerating ? (
-                        <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                      ) : <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />}
-                      {isGenerating ? 'Анализ условий...' : 'Сгенерировать списки'}
-                    </motion.button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1859,6 +1918,7 @@ export default function App() {
 
             {/* Список путешественников с круговым прогресс-баром */}
             <motion.section 
+              ref={travelersRef}
               className={`bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-lg shadow-orange-950/5 relative select-none flex flex-col ${collapsedModals.travelers ? 'pb-3.5 gap-0' : 'gap-4'}`}
             >
               <div className="border-b border-slate-100/50 pb-2.5 flex items-center justify-between">
@@ -2067,17 +2127,31 @@ export default function App() {
                           value={newMemberName}
                           onChange={(e) => setNewMemberName(e.target.value)}
                           placeholder="Имя путешественника..."
-                          className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                          className="flex-1 min-w-0 bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
                         />
                         <motion.button 
                           whileHover={{ scale: 1.03 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={handleAddMember}
-                          className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-xs px-3 rounded-xl uppercase tracking-wider border border-orange-200/50 transition-all cursor-pointer flex items-center justify-center gap-1"
+                          className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-xs px-3 rounded-xl uppercase tracking-wider border border-orange-200/50 transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0"
                         >
                           Добавить
                         </motion.button>
                       </div>
+
+                      {/* КНОПКА ГЕНЕРАЦИИ СПИСКОВ */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleGenerateWithAI}
+                        disabled={isGenerating}
+                        className="mt-4 w-full bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white font-extrabold text-xs py-3 px-4 rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-100/50 disabled:opacity-50"
+                      >
+                        {isGenerating ? (
+                          <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                        ) : <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />}
+                        {isGenerating ? 'Анализ условий...' : 'Сгенерировать списки'}
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}
@@ -2106,6 +2180,7 @@ export default function App() {
               </motion.div>
             ) : (
               <motion.div
+                ref={suitcaseRef}
                 drag="y"
                 dragControls={dragControlsSuitcase}
                 dragListener={false}
@@ -2391,19 +2466,19 @@ export default function App() {
                             </AnimatePresence>
                           </div>
 
-                          <div className="flex items-center gap-2 mt-1 border-t border-slate-100/40 pt-2">
+                          <div className="flex items-center gap-1.5 mt-1.5 border-t border-slate-100/40 pt-2">
                             <input 
                               type="text"
                               value={newCustomItems[categoryName] || ''}
                               onChange={(e) => setNewCustomItems({ ...newCustomItems, [categoryName]: e.target.value })}
                               placeholder="Добавить вещь..."
-                              className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                              className="flex-1 min-w-0 bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500"
                             />
                             <motion.button 
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               onClick={() => handleAddItem(categoryName)}
-                              className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-1 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center gap-1"
+                              className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-1 px-2.5 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center gap-1"
                             >
                               <Plus className="w-3 h-3" />
                               Добавить
