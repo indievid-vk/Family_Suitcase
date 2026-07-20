@@ -44,7 +44,8 @@ import {
   Monitor,
   MoreVertical,
   Minimize2,
-  Maximize2
+  Maximize2,
+  ChevronDown
 } from 'lucide-react';
 import { Item, Lists, Member, TripConditions, Gender, AgeGroup } from './types';
 
@@ -633,6 +634,7 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState<boolean>(false);
   const [headerMounted, setHeaderMounted] = useState<boolean>(false);
+  const [isTravelerDropdownOpen, setIsTravelerDropdownOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setHeaderMounted(true);
@@ -1246,7 +1248,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={executeDeleteMember}
-                    className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
                   >
                     Удалить
                   </button>
@@ -2194,35 +2196,89 @@ export default function App() {
               {/* Верхняя строка: Имя, аватар, прогресс-бар */}
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  {/* Grip drag handle: three vertical dots */}
-                  <div 
-                    onPointerDown={(e) => dragControlsSuitcase.start(e)}
-                    className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
-                    title="Перетащить вверх-вниз"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                  </div>
-
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr bg-linear-to-tr ${activeMember ? getMemberGradient(activeMember) : 'from-orange-400 to-amber-500'} flex items-center justify-center shadow-md text-white shrink-0`}>
-                    {activeMember?.ageGroup === 'pet' ? <PawPrint className="w-6 h-6" /> : activeMember?.ageGroup === 'child' ? <Baby className="w-6 h-6" /> : <User className="w-6 h-6" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h2 className="font-extrabold text-base text-slate-800">Чемодан: {activeMember?.name}</h2>
-                      {activeMember?.ageGroup !== 'pet' && (
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${activeMember?.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
-                          {activeMember?.gender === 'male' ? 'М' : 'Ж'}
-                        </span>
-                      )}
-                      <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${activeMember?.ageGroup === 'pet' ? 'bg-emerald-50 text-emerald-600' : activeMember?.ageGroup === 'adult' ? 'bg-orange-50 text-orange-600 border border-orange-100/40' : 'bg-orange-50 text-orange-600'}`}>
-                        {activeMember?.ageGroup === 'pet' ? 'Питомец 🐾' : activeMember?.ageGroup === 'adult' ? 'Взр' : 'Дет'}
-                      </span>
+                  <div className="relative">
+                    <div 
+                      onClick={() => setIsTravelerDropdownOpen(!isTravelerDropdownOpen)}
+                      className="flex items-center gap-3 hover:bg-slate-50 active:bg-slate-100 p-2 -m-2 rounded-2xl transition-all cursor-pointer select-none group"
+                      title="Сменить путешественника"
+                    >
+                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr bg-linear-to-tr ${activeMember ? getMemberGradient(activeMember) : 'from-orange-400 to-amber-500'} flex items-center justify-center shadow-md text-white shrink-0 group-hover:scale-105 transition-transform`}>
+                        {activeMember?.ageGroup === 'pet' ? <PawPrint className="w-6 h-6" /> : activeMember?.ageGroup === 'child' ? <Baby className="w-6 h-6" /> : <User className="w-6 h-6" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h2 className="font-extrabold text-base text-slate-800 flex items-center gap-1">
+                            Чемодан: {activeMember?.name}
+                            <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-transform ${isTravelerDropdownOpen ? 'rotate-180' : ''}`} />
+                          </h2>
+                          {activeMember?.ageGroup !== 'pet' && (
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${activeMember?.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                              {activeMember?.gender === 'male' ? 'М' : 'Ж'}
+                            </span>
+                          )}
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${activeMember?.ageGroup === 'pet' ? 'bg-emerald-50 text-emerald-600' : activeMember?.ageGroup === 'adult' ? 'bg-orange-50 text-orange-600 border border-orange-100/40' : 'bg-orange-50 text-orange-600'}`}>
+                            {activeMember?.ageGroup === 'pet' ? 'Питомец 🐾' : activeMember?.ageGroup === 'adult' ? 'Взр' : 'Дет'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                          Собрано: <span className={`${activeMember?.textColor || 'text-orange-600'} font-extrabold`}>{activePacked} из {activeTotal}</span> вещей ({activeProgress}%)
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                      Собрано: <span className={`${activeMember?.textColor || 'text-orange-600'} font-extrabold`}>{activePacked} из {activeTotal}</span> вещей ({activeProgress}%)
-                    </p>
+
+                    {/* Dropdown menu */}
+                    <AnimatePresence>
+                      {isTravelerDropdownOpen && (
+                        <>
+                          {/* Backdrop to close on click outside */}
+                          <div 
+                            className="fixed inset-0 z-40 cursor-default" 
+                            onClick={() => setIsTravelerDropdownOpen(false)} 
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            transition={{ duration: 0.15, ease: 'easeOut' }}
+                            className="absolute left-0 top-full mt-3 w-64 bg-white rounded-2xl border border-slate-100 shadow-2xl p-2 z-50 flex flex-col gap-1 max-h-80 overflow-y-auto custom-scrollbar"
+                          >
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Сменить чемодан
+                            </div>
+                            {members.map((m) => {
+                              const isActive = m.id === activeMemberId;
+                              return (
+                                <button
+                                  key={m.id}
+                                  onClick={() => {
+                                    setActiveMemberId(m.id);
+                                    setIsTravelerDropdownOpen(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-colors cursor-pointer ${isActive ? 'bg-orange-50/60' : 'hover:bg-slate-50'}`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={`w-8 h-8 rounded-xl bg-gradient-to-tr bg-linear-to-tr ${getMemberGradient(m)} flex items-center justify-center text-white shrink-0 text-xs shadow-sm`}>
+                                      {m.ageGroup === 'pet' ? <PawPrint className="w-4 h-4" /> : m.ageGroup === 'child' ? <Baby className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-bold text-slate-700 leading-tight">
+                                        {m.name}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 font-medium">
+                                        {m.ageGroup === 'pet' ? '🐾 Питомец' : m.ageGroup === 'adult' ? '🧑 Взрослый' : '👶 Ребенок'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {isActive && (
+                                    <Check className="w-4 h-4 text-orange-500 stroke-[3]" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 
