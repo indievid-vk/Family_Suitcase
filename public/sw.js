@@ -1,5 +1,4 @@
-const urlParams = new URLSearchParams(self.location.search);
-const VERSION = urlParams.get('v') || '1.0.0';
+const VERSION = '0.0.1';
 const CACHE_NAME = `family-pack-cache-v${VERSION}`;
 
 // Ресурсы, которые кэшируются сразу при установке
@@ -53,6 +52,12 @@ self.addEventListener('fetch', (event) => {
 
   // Игнорируем запросы к панели разработчика (HMR, Vite ws)
   if (url.pathname.startsWith('/@vite') || url.hostname === 'localhost' && url.port && url.port !== '3000') {
+    return;
+  }
+
+  // Не кэшируем версию приложения
+  if (url.pathname.endsWith('version.json')) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

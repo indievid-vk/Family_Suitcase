@@ -468,17 +468,32 @@ export default function App() {
   const activeMember = members.find(m => m.id === activeMemberId) || members[0];
 
   // Настройки текущей поездки
-  const [tripDestination, setTripDestination] = useState<string>('Сочи');
-  const [tripDays, setTripDays] = useState<number>(7);
-  const [tripConditions, setTripConditions] = useState<TripConditions>({
-    withKids: true,
-    isHike: false,
-    isBeach: true,
-    isCold: false,
-    isHot: false,
-    isRain: false,
-    isCamp: false,
-    isSport: false
+  const [tripDestination, setTripDestination] = useState<string>(() => {
+    return localStorage.getItem('family_pack_destination') || 'Сочи';
+  });
+  const [tripDays, setTripDays] = useState<number>(() => {
+    const saved = localStorage.getItem('family_pack_days');
+    return saved ? parseInt(saved, 10) : 7;
+  });
+  const [tripConditions, setTripConditions] = useState<TripConditions>(() => {
+    const saved = localStorage.getItem('family_pack_conditions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // ignore
+      }
+    }
+    return {
+      withKids: true,
+      isHike: false,
+      isBeach: true,
+      isCold: false,
+      isHot: false,
+      isRain: false,
+      isCamp: false,
+      isSport: false
+    };
   });
 
   // Состояния PWA (Advanced PWA Logic)
@@ -841,6 +856,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('family_pack_members', JSON.stringify(members));
   }, [members]);
+
+  useEffect(() => {
+    localStorage.setItem('family_pack_destination', tripDestination);
+  }, [tripDestination]);
+
+  useEffect(() => {
+    localStorage.setItem('family_pack_days', String(tripDays));
+  }, [tripDays]);
+
+  useEffect(() => {
+    localStorage.setItem('family_pack_conditions', JSON.stringify(tripConditions));
+  }, [tripConditions]);
 
   const triggerNotification = (msg: string) => {
     setNotification(msg);
