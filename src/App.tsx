@@ -1108,11 +1108,35 @@ export default function App() {
     setTimeout(() => {
       const updatedMembers = members.map(m => {
         const customList = generateLocalList(tripConditions, tripDays, m.gender, m.ageGroup);
-        return { ...m, lists: customList };
+        
+        // Слияние списков для сохранения ручных изменений и добавления новых вещей
+        const existingLists = m.lists || {};
+        const mergedLists: Lists = { ...existingLists };
+
+        for (const category of Object.keys(customList)) {
+          const generatedItems = customList[category] || [];
+          if (!mergedLists[category]) {
+            // Если такой категории еще не было, просто добавляем её
+            mergedLists[category] = [...generatedItems];
+          } else {
+            // Если категория существует, сливаем элементы
+            const existingItems = mergedLists[category];
+            const existingNames = new Set(existingItems.map(it => it.name.toLowerCase().trim()));
+
+            // Добавляем только те сгенерированные вещи, которых еще нет в списке
+            const itemsToAdd = generatedItems.filter(
+              genItem => !existingNames.has(genItem.name.toLowerCase().trim())
+            );
+
+            mergedLists[category] = [...existingItems, ...itemsToAdd];
+          }
+        }
+
+        return { ...m, lists: mergedLists };
       });
       setMembers(updatedMembers);
       setIsGenerating(false);
-      triggerNotification('✨ Вещи успешно распределены по чемоданам!');
+      triggerNotification('✨ Списки успешно обновлены с сохранением ваших изменений!');
     }, 850);
   };
 
