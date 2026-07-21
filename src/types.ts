@@ -20,6 +20,7 @@ export interface Member {
   textColor: string;
   border: string;
   lists: Lists;
+  categoryOrder?: string[];
 }
 
 export interface TripConditions {

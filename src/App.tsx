@@ -46,6 +46,7 @@ import {
   Minimize2,
   Maximize2,
   ChevronDown,
+  ChevronUp,
   CloudRain,
   Trees,
   Dumbbell,
@@ -61,6 +62,12 @@ const DEFAULT_ITEMS = {
       { name: "Паспорт", count: 1, packed: false },
       { name: "Билеты / Подтверждения броней", count: 1, packed: false },
       { name: "СНИЛС", count: 1, packed: false }
+    ],
+    "🍎 Еда": [
+      { name: "Вода питьевая (бутылка)", count: 2, packed: false },
+      { name: "Перекус в дорогу (сэндвичи / батончики)", count: 2, packed: false },
+      { name: "Орехи / Сухофрукты / Снеки", count: 1, packed: false },
+      { name: "Жевательная резинка / Леденцы", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Футболки мужские", count: 1, packed: false },
@@ -96,6 +103,12 @@ const DEFAULT_ITEMS = {
       { name: "Паспорт", count: 1, packed: false },
       { name: "Билеты / Подтверждения броней", count: 1, packed: false },
       { name: "СНИЛС", count: 1, packed: false }
+    ],
+    "🍎 Еда": [
+      { name: "Вода питьевая (бутылка)", count: 2, packed: false },
+      { name: "Перекус в дорогу (батончики / фрукты)", count: 2, packed: false },
+      { name: "Орехи / Сухофрукты / Снеки", count: 1, packed: false },
+      { name: "Чай в пакетиках / Растворимый кофе", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Платья / Сарафаны", count: 1, packed: false },
@@ -133,6 +146,12 @@ const DEFAULT_ITEMS = {
       { name: "Свидетельство о рождении / Паспорт", count: 1, packed: false },
       { name: "Полис ОМС", count: 1, packed: false },
       { name: "СНИЛС", count: 1, packed: false }
+    ],
+    "🍎 Еда": [
+      { name: "Детская вода / Сок с соломинкой", count: 2, packed: false },
+      { name: "Детские перекусы (пюре в паучах, печенье)", count: 3, packed: false },
+      { name: "Фрукты (яблоки, бананы)", count: 2, packed: false },
+      { name: "Леденцы от укачивания", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Детские футболки для мальчика", count: 2, packed: false },
@@ -172,6 +191,12 @@ const DEFAULT_ITEMS = {
       { name: "Свидетельство о рождении / Паспорт", count: 1, packed: false },
       { name: "Полис ОМС", count: 1, packed: false },
       { name: "СНИЛС", count: 1, packed: false }
+    ],
+    "🍎 Еда": [
+      { name: "Детская вода / Сок с соломинкой", count: 2, packed: false },
+      { name: "Детские перекусы (пюре в паучах, печенье)", count: 3, packed: false },
+      { name: "Фрукты (яблоки, бананы)", count: 2, packed: false },
+      { name: "Леденцы от укачивания", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Детские платья / Юбочки", count: 2, packed: false },
@@ -219,6 +244,10 @@ const DEFAULT_ITEMS = {
       { name: "Лакомства в дорогу", count: 1, packed: false },
       { name: "Дорожная поилка", count: 1, packed: false }
     ],
+    "🍎 Еда": [
+      { name: "Лакомства и снеки для питомца в дорогу", count: 2, packed: false },
+      { name: "Запас прохладной воды в дорогу", count: 1, packed: false }
+    ],
     "🐕 Амуниция и Сон": [
       { name: "Поводок / Рулетка & Ошейник с адресником", count: 1, packed: false },
       { name: "Переноска / Автокресло для животных", count: 1, packed: false },
@@ -249,13 +278,13 @@ const cleanCategoryName = (name: string): string => {
 const getCategoryIcon = (name: string) => {
   const clean = cleanCategoryName(name);
   if (clean.includes("Документы")) return FileText;
+  if (clean.includes("Еда") || clean.includes("Питание") || clean.includes("Корм")) return Utensils;
   if (clean.includes("Одежда")) return Shirt;
   if (clean.includes("Обувь")) return Footprints;
   if (clean.includes("Гигиена")) return Smile;
   if (clean.includes("Гаджеты")) return Smartphone;
   if (clean.includes("Лекарства")) return HeartPulse;
   if (clean.includes("Игры") || clean.includes("досуг")) return Gamepad2;
-  if (clean.includes("Питание") || clean.includes("Корм")) return Utensils;
   if (clean.includes("Амуниция")) return Compass;
   if (clean.includes("Пляж")) return Sun;
   if (clean.includes("Снаряжение") || clean.includes("Поход")) return Tent;
@@ -270,13 +299,13 @@ const getCategoryIcon = (name: string) => {
 const getCategoryStyles = (name: string) => {
   const clean = cleanCategoryName(name);
   if (clean.includes("Документы")) return { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-100", accent: "orange" };
+  if (clean.includes("Еда") || clean.includes("Питание") || clean.includes("Корм")) return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "amber" };
   if (clean.includes("Одежда")) return { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-100", accent: "pink" };
   if (clean.includes("Обувь")) return { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", accent: "rose" };
   if (clean.includes("Гигиена")) return { bg: "bg-teal-50", text: "text-teal-600", border: "border-teal-100", accent: "teal" };
   if (clean.includes("Гаджеты")) return { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-100", accent: "purple" };
   if (clean.includes("Лекарства")) return { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", accent: "rose" };
   if (clean.includes("Игры") || clean.includes("досуг")) return { bg: "bg-fuchsia-50", text: "text-fuchsia-600", border: "border-fuchsia-100", accent: "fuchsia" };
-  if (clean.includes("Питание") || clean.includes("Корм")) return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "amber" };
   if (clean.includes("Амуниция")) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "emerald" };
   if (clean.includes("Пляж")) return { bg: "bg-yellow-50", text: "text-yellow-600", border: "border-yellow-100", accent: "yellow" };
   if (clean.includes("Снаряжение") || clean.includes("Поход")) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "emerald" };
@@ -290,6 +319,7 @@ const getCategoryStyles = (name: string) => {
 
 const CATEGORY_ORDER = [
   "📋 Документы",
+  "🍎 Еда",
   "💊 Лекарства",
   "🥩 Питание",
   "👕 Одежда",
@@ -331,6 +361,22 @@ function sortCategories([a]: [string, any], [b]: [string, any]): number {
   if (indexA !== -1) return -1;
   if (indexB !== -1) return 1;
   return cleanA.localeCompare(cleanB);
+}
+
+function getOrderedCategories(member?: Member | null): string[] {
+  if (!member || !member.lists) return [];
+  const categories = Object.keys(member.lists);
+  if (!member.categoryOrder || member.categoryOrder.length === 0) {
+    return categories.sort((ka, kb) => sortCategories([ka, null], [kb, null]));
+  }
+  
+  const orderMap = new Map(member.categoryOrder.map((cat, idx) => [cat, idx]));
+  return categories.sort((a, b) => {
+    const idxA = orderMap.has(a) ? orderMap.get(a)! : 999;
+    const idxB = orderMap.has(b) ? orderMap.get(b)! : 999;
+    if (idxA !== idxB) return idxA - idxB;
+    return sortCategories([a, null], [b, null]);
+  });
 }
 
 function migrateLists(lists: Lists): Lists {
@@ -912,6 +958,8 @@ export default function App() {
           factor = Math.max(5, days * 1.5);
         } else if (catName === "🥩 Питание" && item.name.includes("Корм")) {
           factor = Math.max(1, days);
+        } else if (catName === "🍎 Еда" && (item.name.includes("Вода") || item.name.includes("Перекус") || item.name.includes("перекус") || item.name.includes("Сок"))) {
+          factor = Math.max(1, Math.min(Math.ceil(days / 2), 6));
         } else if (catName === "🧼 Гигиена и Уход" && item.name.includes("пеленки")) {
           factor = Math.max(2, days);
         }
@@ -1143,19 +1191,12 @@ export default function App() {
         for (const category of Object.keys(customList)) {
           const generatedItems = customList[category] || [];
           if (!mergedLists[category]) {
-            // Если такой категории еще не было, просто добавляем её
+            // Если такой категории еще не было в чемодане, добавляем её
             mergedLists[category] = [...generatedItems];
           } else {
-            // Если категория существует, сливаем элементы
-            const existingItems = mergedLists[category];
-            const existingNames = new Set(existingItems.map(it => it.name.toLowerCase().trim()));
-
-            // Добавляем только те сгенерированные вещи, которых еще нет в списке
-            const itemsToAdd = generatedItems.filter(
-              genItem => !existingNames.has(genItem.name.toLowerCase().trim())
-            );
-
-            mergedLists[category] = [...existingItems, ...itemsToAdd];
+            // Если категория уже была создана и отредактирована пользователем,
+            // оставляем её 100% без изменений: удаленные элементы не возвращаем,
+            // добавленные пользователем сохраняем, статусы упаковано и количества не сбрасываем.
           }
         }
 
@@ -1229,6 +1270,28 @@ export default function App() {
     setNewCustomCategory('');
     triggerNotification(`➕ Категория "${catName}" добавлена!`);
     setActiveCategoryTab(catName);
+  };
+
+  const handleMoveCategory = (categoryName: string, direction: 'up' | 'down') => {
+    if (!activeMember) return;
+    const currentOrdered = getOrderedCategories(activeMember);
+    const index = currentOrdered.indexOf(categoryName);
+    if (index === -1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentOrdered.length) return;
+
+    const newOrder = [...currentOrdered];
+    const temp = newOrder[index];
+    newOrder[index] = newOrder[targetIndex];
+    newOrder[targetIndex] = temp;
+
+    setMembers(prev => prev.map(m => {
+      if (m.id === activeMember.id) {
+        return { ...m, categoryOrder: newOrder };
+      }
+      return m;
+    }));
   };
 
   const startEditMember = (m: Member) => {
@@ -2486,7 +2549,7 @@ export default function App() {
                     </button>
 
                     {/* Индивидуальные вкладки */}
-                    {Object.keys(activeMember.lists).sort((ka, kb) => sortCategories([ka, null], [kb, null])).map(cat => {
+                    {getOrderedCategories(activeMember).map(cat => {
                       const items = activeMember.lists[cat] || [];
                       const packedCount = items.filter(it => it.packed).length;
                       const totalCount = items.length;
@@ -2553,38 +2616,69 @@ export default function App() {
               ) : (
                 <div className="flex flex-col gap-4">
                   <AnimatePresence mode="popLayout">
-                    {Object.entries(activeMember.lists)
-                      .sort(sortCategories)
-                      .filter(([categoryName]) => activeCategoryTab === 'all' || activeCategoryTab === categoryName)
-                      .map(([categoryName, rawItems]) => {
-                      const items = rawItems as Item[];
-                      return (
-                        <motion.div 
-                           layout
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ duration: 0.25 }}
-                          key={categoryName}
-                          className="bg-white/40 border border-slate-200/30 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:bg-white/70 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between border-b border-slate-100/60 pb-1.5">
-                            <div className="flex items-center gap-2">
-                              {(() => {
-                                const IconComponent = getCategoryIcon(categoryName);
-                                const styles = getCategoryStyles(categoryName);
-                                return (
-                                  <div className={`w-6 h-6 rounded-lg ${styles.bg} ${styles.text} flex items-center justify-center border ${styles.border} shrink-0`}>
-                                    <IconComponent className="w-3.5 h-3.5" />
+                    {(() => {
+                      const orderedCategories = getOrderedCategories(activeMember);
+                      const filteredCategories = orderedCategories.filter(cat => activeCategoryTab === 'all' || activeCategoryTab === cat);
+                      
+                      return filteredCategories.map((categoryName) => {
+                        const items = (activeMember.lists[categoryName] || []) as Item[];
+                        const catIndex = orderedCategories.indexOf(categoryName);
+                        const totalCatsCount = orderedCategories.length;
+
+                        return (
+                          <motion.div 
+                            layout
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.25 }}
+                            key={categoryName}
+                            className="bg-white/40 border border-slate-200/30 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:bg-white/70 shadow-sm"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-100/60 pb-1.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {(() => {
+                                  const IconComponent = getCategoryIcon(categoryName);
+                                  const styles = getCategoryStyles(categoryName);
+                                  return (
+                                    <div className={`w-6 h-6 rounded-lg ${styles.bg} ${styles.text} flex items-center justify-center border ${styles.border} shrink-0`}>
+                                      <IconComponent className="w-3.5 h-3.5" />
+                                    </div>
+                                  );
+                                })()}
+                                <span className="font-extrabold text-[12px] text-slate-700 uppercase tracking-wide truncate">{cleanCategoryName(categoryName)}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {/* Кнопки перемещения списка выше / ниже */}
+                                {activeCategoryTab === 'all' && totalCatsCount > 1 && (
+                                  <div className="flex items-center gap-0.5 bg-slate-100/80 rounded-lg p-0.5 border border-slate-200/50">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveCategory(categoryName, 'up')}
+                                      disabled={catIndex === 0}
+                                      title="Переместить список выше"
+                                      className="p-1 hover:bg-white rounded text-slate-500 hover:text-orange-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                                    >
+                                      <ChevronUp className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveCategory(categoryName, 'down')}
+                                      disabled={catIndex === totalCatsCount - 1}
+                                      title="Переместить список ниже"
+                                      className="p-1 hover:bg-white rounded text-slate-500 hover:text-orange-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                                    >
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
-                                );
-                              })()}
-                              <span className="font-extrabold text-[12px] text-slate-700 uppercase tracking-wide">{cleanCategoryName(categoryName)}</span>
+                                )}
+
+                                <span className="text-[10px] font-bold bg-orange-50/50 text-orange-600 border border-orange-100/40 px-2.5 py-0.5 rounded-full">
+                                  {items.filter(it => it.packed).length} / {items.length} упаковано
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-[10px] font-bold bg-orange-50/50 text-orange-600 border border-orange-100/40 px-2.5 py-0.5 rounded-full">
-                              {items.filter(it => it.packed).length} / {items.length} упаковано
-                            </span>
-                          </div>
 
                           <div className="flex flex-col gap-2">
                             <AnimatePresence mode="popLayout">
@@ -2669,7 +2763,8 @@ export default function App() {
 
                         </motion.div>
                       );
-                    })}
+                    });
+                  })()}
                   </AnimatePresence>
                 </div>
               )}
