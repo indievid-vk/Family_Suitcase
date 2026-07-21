@@ -1502,59 +1502,27 @@ export default function App() {
         {/* МОДАЛКА ЭКСПОРТА / ИМПОРТА */}
         <AnimatePresence>
           {isExportModalOpen && (
-            <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${collapsedModals.export ? 'pointer-events-none bg-transparent backdrop-blur-none' : 'bg-slate-900/30 backdrop-blur-md'}`}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md">
               <motion.div 
                 layoutId="export-modal-container"
-                drag
-                dragControls={dragControlsExport}
-                dragListener={false}
-                dragMomentum={false}
-                dragElastic={0.05}
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className={`bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto ${collapsedModals.export ? 'p-4 max-w-sm' : 'p-6 max-w-xl w-full gap-4'}`}
+                className="bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto p-6 max-w-xl w-full gap-4"
               >
-                {/* ХЕДЕР С ТРЕУГОЛЬНИКОМ СВОРАЧИВАНИЯ И С ТРЕМЯ ТОЧКАМИ ПЕРЕТАСКИВАНИЯ */}
+                {/* ХЕДЕР */}
                 <div className="flex items-center justify-between border-b border-slate-100/80 pb-3 relative">
                   <div className="flex items-center gap-3">
-                    {/* Три точки слева от заголовка для перетаскивания */}
-                    <div 
-                      onPointerDown={(e) => dragControlsExport.start(e)}
-                      className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
-                      title="Перетащить окно"
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    </div>
-
                     <div>
                       <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
                         <Share2 className="w-4 h-4 text-orange-500" />
                         Поделиться сборами
                       </h3>
-                      {!collapsedModals.export && (
-                        <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Экспорт и импорт списков через файлы</p>
-                      )}
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Экспорт и импорт списков через файлы</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {/* Треугольник справа от заголовка для сворачивания */}
-                    <button 
-                      onClick={() => toggleModalCollapse('export')}
-                      className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
-                      title={collapsedModals.export ? "Развернуть" : "Свернуть"}
-                    >
-                      <svg 
-                        viewBox="0 0 24 24" 
-                        className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.export ? '-rotate-90' : ''}`}
-                      >
-                        <path d="M12 16l-6-6h12z"/>
-                      </svg>
-                    </button>
-                    
                     <button 
                       onClick={() => setIsExportModalOpen(false)}
                       className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
@@ -1565,58 +1533,48 @@ export default function App() {
                   </div>
                 </div>
 
-                <AnimatePresence initial={false}>
-                  {!collapsedModals.export && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden flex flex-col gap-4"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 cursor-default" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex flex-col gap-2">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                            <Download className="w-3.5 h-3.5" /> 1. Сохранить записи:
-                          </span>
-                          <p className="text-[11px] text-slate-400 leading-relaxed">
-                            Сохраните файл со всеми списками вещей и настройками на ваше устройство. Файл можно отправить близким в любой мессенджер.
-                          </p>
-                          <motion.button 
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleExportToFile}
-                            className="mt-auto w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Сохранить записи
-                          </motion.button>
-                        </div>
+                <div className="overflow-hidden flex flex-col gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 cursor-default" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <Download className="w-3.5 h-3.5" /> 1. Сохранить записи:
+                      </span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Сохраните файл со всеми списками вещей и настройками на ваше устройство. Файл можно отправить близким в любой мессенджер.
+                      </p>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleExportToFile}
+                        className="mt-auto w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Сохранить записи
+                      </motion.button>
+                    </div>
 
-                        <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                            <Upload className="w-3.5 h-3.5" /> 2. Восстановить записи:
-                          </span>
-                          <p className="text-[11px] text-slate-400 leading-relaxed">
-                            Выберите ранее сохраненный файл со списками вещей `.json` для мгновенной загрузки и восстановления данных:
-                          </p>
-                          <motion.button 
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              fileInputRef.current?.click();
-                              setIsExportModalOpen(false);
-                            }}
-                            className="mt-auto w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                          >
-                            <Upload className="w-3.5 h-3.5" />
-                            Восстановить записи
-                          </motion.button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" /> 2. Восстановить записи:
+                      </span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Выберите ранее сохраненный файл со списками вещей `.json` для мгновенной загрузки и восстановления данных:
+                      </p>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setIsExportModalOpen(false);
+                        }}
+                        className="mt-auto w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        Восстановить записи
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             </div>
           )}
@@ -1797,59 +1755,27 @@ export default function App() {
         {/* МОДАЛКА О ПРИЛОЖЕНИИ */}
         <AnimatePresence>
           {isAboutModalOpen && (
-            <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${collapsedModals.about ? 'pointer-events-none bg-transparent backdrop-blur-none' : 'bg-slate-900/30 backdrop-blur-md'}`}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md">
               <motion.div 
                 layoutId="about-modal-container"
-                drag
-                dragControls={dragControlsAbout}
-                dragListener={false}
-                dragMomentum={false}
-                dragElastic={0.05}
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className={`bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto ${collapsedModals.about ? 'p-4 max-w-sm' : 'p-6 max-w-2xl w-full max-h-[90vh] overflow-hidden'}`}
+                className="bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto p-6 max-w-2xl w-full max-h-[90vh] overflow-hidden"
               >
-                {/* ХЕДЕР С ТРЕУГОЛЬНИКОМ СВОРАЧИВАНИЯ И С ТРЕМЯ ТОЧКАМИ ПЕРЕТАСКИВАНИЯ */}
+                {/* ХЕДЕР */}
                 <div className="flex items-center justify-between border-b border-slate-100/80 pb-3 relative flex-shrink-0">
                   <div className="flex items-center gap-3">
-                    {/* Три точки слева для перетаскивания */}
-                    <div 
-                      onPointerDown={(e) => dragControlsAbout.start(e)}
-                      className="flex flex-col gap-0.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 transition-colors shrink-0 select-none p-1"
-                      title="Перетащить окно"
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    </div>
-
                     <div>
                       <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
                         <Info className="w-4 h-4 text-orange-500" />
                         О приложении
                       </h3>
-                      {!collapsedModals.about && (
-                        <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Умный планировщик «Семейный Чемодан»</p>
-                      )}
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Умный планировщик «Семейный Чемодан»</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {/* Треугольник справа от заголовка для сворачивания */}
-                    <button 
-                      onClick={() => toggleModalCollapse('about')}
-                      className="p-1 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
-                      title={collapsedModals.about ? "Развернуть" : "Свернуть"}
-                    >
-                      <svg 
-                        viewBox="0 0 24 24" 
-                        className={`w-3.5 h-3.5 fill-current transition-transform duration-300 ${collapsedModals.about ? '-rotate-90' : ''}`}
-                      >
-                        <path d="M12 16l-6-6h12z"/>
-                      </svg>
-                    </button>
-                    
                     <button 
                       onClick={() => setIsAboutModalOpen(false)}
                       className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
@@ -1860,103 +1786,93 @@ export default function App() {
                   </div>
                 </div>
 
-                <AnimatePresence initial={false}>
-                  {!collapsedModals.about && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden flex flex-col"
-                    >
-                      {/* Скроллируемая область контента */}
-                      <div className="overflow-y-auto custom-scrollbar p-1 pt-4 cursor-default flex flex-col gap-5 text-xs text-slate-600 leading-relaxed max-h-[60vh]" onClick={(e) => e.stopPropagation()}>
-                        <div>
-                          <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">О приложении</h4>
-                          <p>
-                            <strong>«Семейный Чемодан»</strong> — это персональный интерактивный планировщик дорожных сборов. 
-                            В отличие от обычных заметок, приложение автоматически анализирует состав вашей семьи (включая детей и любимых питомцев), 
-                            условия путешествия (пляжный отдых, походы, холодный климат), длительность поездки и предлагает идеально сбалансированный список вещей. 
-                            Это избавляет вас от необходимости вспоминать всё в последний момент и гарантирует, что вы не забудете ничего важного!
-                          </p>
-                        </div>
+                <div className="overflow-hidden flex flex-col">
+                  {/* Скроллируемая область контента */}
+                  <div className="overflow-y-auto custom-scrollbar p-1 pt-4 cursor-default flex flex-col gap-5 text-xs text-slate-600 leading-relaxed max-h-[60vh]" onClick={(e) => e.stopPropagation()}>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">О приложении</h4>
+                      <p>
+                        <strong>«Семейный Чемодан»</strong> — это персональный интерактивный планировщик дорожных сборов. 
+                        В отличие от обычных заметок, приложение автоматически анализирует состав вашей семьи (включая детей и любимых питомцев), 
+                        условия путешествия (пляжный отдых, походы, холодный климат), длительность поездки и предлагает идеально сбалансированный список вещей. 
+                        Это избавляет вас от необходимости вспоминать всё в последний момент и гарантирует, что вы не забудете ничего важного!
+                      </p>
+                    </div>
 
-                        <div>
-                          <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Технические особенности приложения</h4>
-                          <p>
-                            Приложение работает как <strong>PWA (Progressive Web App)</strong> — современная технология, которая позволяет 
-                            устанавливать приложение на экран телефона или компьютера прямо из браузера, в обход традиционных магазинов приложений. 
-                            Оно живет прямо в вашем браузере, почти не занимая лишнего места. Все записи хранятся только внутри памяти браузера. 
-                            Это обеспечивает полную приватность без передачи информации в облачные хранилища.
-                          </p>
-                        </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Технические особенности приложения</h4>
+                      <p>
+                        Приложение работает как <strong>PWA (Progressive Web App)</strong> — современная технология, которая позволяет 
+                        устанавливать приложение на экран телефона или компьютера прямо из браузера, в обход традиционных магазинов приложений. 
+                        Оно живет прямо в вашем браузере, почти не занимая лишнего места. Все записи хранятся только внутри памяти браузера. 
+                        Это обеспечивает полную приватность без передачи информации в облачные хранилища.
+                      </p>
+                    </div>
 
-                        <div className="bg-amber-50/70 border border-amber-200/50 rounded-2xl p-4 flex gap-3 text-amber-800">
-                          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                          <div>
-                            <h5 className="font-bold text-xs uppercase tracking-wide mb-0.5">Ограничение</h5>
-                            <p className="text-[11px] leading-relaxed">
-                              Если вы очистите кэш или данные браузера, списки тоже сотрутся.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Возможности</h4>
-                          <p className="mb-3">
-                            Вы можете сохранять свои списки в файл и легко передавать их другим пользователям или импортировать на другие ваши устройства.
-                          </p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <motion.button 
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={handleExportToFile}
-                              className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              Сохранить записи
-                            </motion.button>
-
-                            <motion.button 
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => {
-                                fileInputRef.current?.click();
-                                setIsAboutModalOpen(false);
-                              }}
-                              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              Восстановить записи
-                            </motion.button>
-                          </div>
-                        </div>
-
-                        {/* БЛОК ОБРАТНОЙ СВЯЗИ В СТИЛЕ ИЗОБРАЖЕНИЯ ПОЛЬЗОВАТЕЛЯ */}
-                        <div className="mt-2 bg-[#F9F6F0] rounded-3xl p-6 border border-[#ECE6D9] flex flex-col items-center gap-4 text-center">
-                          <h4 className="font-sans text-lg font-bold text-[#7D1D1D] tracking-wide uppercase">
-                            Обратная связь
-                          </h4>
-                          
-                          <motion.a 
-                            href="mailto:indievid_studiio@mail.ru"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="w-full max-w-sm py-3 px-5 bg-[#EFECE6]/80 hover:bg-[#E7E2D8] border border-[#DCD6C8] rounded-2xl font-semibold text-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-xs"
-                          >
-                            <Mail className="w-4 h-4 text-slate-500" />
-                            <span>Написать разработчику</span>
-                          </motion.a>
-
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                            <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
-                            <span>Создано нейрокомандой Индивид СтуИИя</span>
-                          </div>
-                        </div>
+                    <div className="bg-amber-50/70 border border-amber-200/50 rounded-2xl p-4 flex gap-3 text-amber-800">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <h5 className="font-bold text-xs uppercase tracking-wide mb-0.5">Ограничение</h5>
+                        <p className="text-[11px] leading-relaxed">
+                          Если вы очистите кэш или данные браузера, списки тоже сотрутся.
+                        </p>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+
+                    <div>
+                      <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider mb-1">Возможности</h4>
+                      <p className="mb-3">
+                        Вы можете сохранять свои списки в файл и легко передавать их другим пользователям или импортировать на другие ваши устройства.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleExportToFile}
+                          className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Сохранить записи
+                        </motion.button>
+
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            fileInputRef.current?.click();
+                            setIsAboutModalOpen(false);
+                          }}
+                          className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          Восстановить записи
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    {/* БЛОК ОБРАТНОЙ СВЯЗИ В СТИЛЕ ИЗОБРАЖЕНИЯ ПОЛЬЗОВАТЕЛЯ */}
+                    <div className="mt-2 bg-[#F9F6F0] rounded-3xl p-6 border border-[#ECE6D9] flex flex-col items-center gap-4 text-center">
+                      <h4 className="font-sans text-lg font-bold text-[#7D1D1D] tracking-wide uppercase">
+                        Обратная связь
+                      </h4>
+                      
+                      <motion.a 
+                        href="mailto:indievid_studiio@mail.ru"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full max-w-sm py-3 px-5 bg-[#EFECE6]/80 hover:bg-[#E7E2D8] border border-[#DCD6C8] rounded-2xl font-semibold text-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-xs"
+                      >
+                        <Mail className="w-4 h-4 text-slate-500" />
+                        <span>Написать разработчику</span>
+                      </motion.a>
+
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                        <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                        <span>Создано нейрокомандой Индивид СтуИИя</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             </div>
           )}
