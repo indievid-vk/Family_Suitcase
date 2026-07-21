@@ -45,7 +45,11 @@ import {
   MoreVertical,
   Minimize2,
   Maximize2,
-  ChevronDown
+  ChevronDown,
+  CloudRain,
+  Trees,
+  Dumbbell,
+  Pencil
 } from 'lucide-react';
 import { Item, Lists, Member, TripConditions, Gender, AgeGroup } from './types';
 
@@ -55,12 +59,13 @@ const DEFAULT_ITEMS = {
   adult_male: {
     "📋 Документы": [
       { name: "Паспорт", count: 1, packed: false },
-      { name: "Билеты / Подтверждения броней", count: 1, packed: false }
+      { name: "Билеты / Подтверждения броней", count: 1, packed: false },
+      { name: "СНИЛС", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Футболки мужские", count: 1, packed: false },
       { name: "Нижнее белье мужское", count: 1, packed: false },
-      { name: "Носки", count: 1, packed: false },
+      { name: "Носки, пар", count: 1, packed: false },
       { name: "Шорты / Брюки легкие", count: 1, packed: false },
       { name: "Мужские джинсы", count: 1, packed: false },
       { name: "Теплая кофта / Худи", count: 1, packed: false }
@@ -82,20 +87,21 @@ const DEFAULT_ITEMS = {
     ],
     "💊 Лекарства": [
       { name: "Обезболивающее", count: 1, packed: false },
-      { name: "Пластыри", count: 10, packed: false },
+      { name: "Пластырь, пачка", count: 1, packed: false },
       { name: "Средство от укачивания", count: 1, packed: false }
     ]
   },
   adult_female: {
     "📋 Документы": [
       { name: "Паспорт", count: 1, packed: false },
-      { name: "Билеты / Подтверждения броней", count: 1, packed: false }
+      { name: "Билеты / Подтверждения броней", count: 1, packed: false },
+      { name: "СНИЛС", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Платья / Сарафаны", count: 1, packed: false },
       { name: "Футболки женские", count: 1, packed: false },
       { name: "Нижнее белье женское", count: 1, packed: false },
-      { name: "Носки", count: 1, packed: false },
+      { name: "Носки, пар", count: 1, packed: false },
       { name: "Легинсы / Брюки легкие", count: 1, packed: false },
       { name: "Теплая кофта / Кардиган", count: 1, packed: false }
     ],
@@ -117,7 +123,7 @@ const DEFAULT_ITEMS = {
     ],
     "💊 Лекарства": [
       { name: "Обезболивающее", count: 1, packed: false },
-      { name: "Пластыри", count: 10, packed: false },
+      { name: "Пластырь, пачка", count: 1, packed: false },
       { name: "Средство от укачивания", count: 1, packed: false },
       { name: "Индивидуальная аптечка", count: 1, packed: false }
     ]
@@ -125,13 +131,14 @@ const DEFAULT_ITEMS = {
   child_boy: {
     "📋 Документы": [
       { name: "Свидетельство о рождении / Паспорт", count: 1, packed: false },
-      { name: "Полис ОМС", count: 1, packed: false }
+      { name: "Полис ОМС", count: 1, packed: false },
+      { name: "СНИЛС", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Детские футболки для мальчика", count: 2, packed: false },
       { name: "Шорты детские", count: 2, packed: false },
       { name: "Сменное детское белье", count: 2, packed: false },
-      { name: "Носки детские", count: 2, packed: false },
+      { name: "Носки детские, пар", count: 2, packed: false },
       { name: "Кофточка детская с капюшоном", count: 1, packed: false },
       { name: "Детская кепка", count: 1, packed: false }
     ],
@@ -154,7 +161,7 @@ const DEFAULT_ITEMS = {
     "💊 Лекарства": [
       { name: "Детский жаропонижающий сироп", count: 1, packed: false },
       { name: "Капли в нос детские", count: 1, packed: false },
-      { name: "Пластыри детские с рисунком", count: 10, packed: false }
+      { name: "Пластырь детский, пачка", count: 1, packed: false }
     ],
     "📱 Гаджеты": [
       { name: "Детский планшет / Игрушка", count: 1, packed: false }
@@ -163,14 +170,15 @@ const DEFAULT_ITEMS = {
   child_girl: {
     "📋 Документы": [
       { name: "Свидетельство о рождении / Паспорт", count: 1, packed: false },
-      { name: "Полис ОМС", count: 1, packed: false }
+      { name: "Полис ОМС", count: 1, packed: false },
+      { name: "СНИЛС", count: 1, packed: false }
     ],
     "👕 Одежда": [
       { name: "Детские платья / Юбочки", count: 2, packed: false },
       { name: "Детские футболки для девочки", count: 2, packed: false },
       { name: "Легинсы детские", count: 2, packed: false },
       { name: "Сменное детское белье", count: 2, packed: false },
-      { name: "Носки детские", count: 2, packed: false },
+      { name: "Носки детские, пар", count: 2, packed: false },
       { name: "Кофточка детская с капюшоном", count: 1, packed: false },
       { name: "Панама детская", count: 1, packed: false },
       { name: "Заколки и резиночки для волос", count: 1, packed: false }
@@ -194,7 +202,7 @@ const DEFAULT_ITEMS = {
     "💊 Лекарства": [
       { name: "Детский жаропонижающий сироп", count: 1, packed: false },
       { name: "Капли в нос детские", count: 1, packed: false },
-      { name: "Пластыри детские с рисунком", count: 10, packed: false }
+      { name: "Пластырь детский, пачка", count: 1, packed: false }
     ],
     "📱 Гаджеты": [
       { name: "Детский планшет / Игрушка", count: 1, packed: false }
@@ -253,6 +261,9 @@ const getCategoryIcon = (name: string) => {
   if (clean.includes("Снаряжение") || clean.includes("Поход")) return Tent;
   if (clean.includes("Теплые") || clean.includes("Холод")) return Snowflake;
   if (clean.includes("Летние") || clean.includes("Жара") || clean.includes("Жарко")) return Flame;
+  if (clean.includes("Дождь") || clean.includes("Непогода")) return CloudRain;
+  if (clean.includes("Лагерь") || clean.includes("Кемпинг")) return Trees;
+  if (clean.includes("Спорт")) return Dumbbell;
   return Layers;
 };
 
@@ -271,6 +282,9 @@ const getCategoryStyles = (name: string) => {
   if (clean.includes("Снаряжение") || clean.includes("Поход")) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "emerald" };
   if (clean.includes("Теплые") || clean.includes("Холод")) return { bg: "bg-sky-50", text: "text-sky-600", border: "border-sky-100", accent: "sky" };
   if (clean.includes("Летние") || clean.includes("Жара") || clean.includes("Жарко")) return { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-100", accent: "orange" };
+  if (clean.includes("Дождь") || clean.includes("Непогода")) return { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100", accent: "blue" };
+  if (clean.includes("Лагерь") || clean.includes("Кемпинг")) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "emerald" };
+  if (clean.includes("Спорт")) return { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100", accent: "indigo" };
   return { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-100", accent: "slate" };
 };
 
@@ -288,6 +302,9 @@ const CATEGORY_ORDER = [
   "☀️ Летние вещи (Жара)",
   "⛺ Снаряжение & Поход",
   "❄️ Теплые вещи (Холод)",
+  "🌧️ Дождь / Непогода",
+  "🌲 Кемпинг / Лагерь",
+  "💪 Спорт / Активный отдых",
   "🧸 Игры и досуг"
 ];
 
@@ -458,7 +475,10 @@ export default function App() {
     isHike: false,
     isBeach: true,
     isCold: false,
-    isHot: false
+    isHot: false,
+    isRain: false,
+    isCamp: false,
+    isSport: false
   });
 
   // Состояния PWA (Advanced PWA Logic)
@@ -800,6 +820,7 @@ export default function App() {
   const [newMemberName, setNewMemberName] = useState<string>('');
   const [newMemberGender, setNewMemberGender] = useState<Gender>('male');
   const [newMemberAgeGroup, setNewMemberAgeGroup] = useState<AgeGroup>('adult');
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>('all');
@@ -1003,6 +1024,80 @@ export default function App() {
       }
     }
 
+    // 6. Rain conditions
+    if (conditions.isRain) {
+      if (!combined["🌧️ Дождь / Непогода"]) combined["🌧️ Дождь / Непогода"] = [];
+      if (ageGroup === 'adult') {
+        combined["🌧️ Дождь / Непогода"].push(
+          { name: "Зонт складной", count: 1, packed: false },
+          { name: "Водонепроницаемый чехол для телефона", count: 1, packed: false },
+          { name: "Плотный дождевик / Ветровка", count: 1, packed: false },
+          { name: "Сушилка для обуви", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'child') {
+        combined["🌧️ Дождь / Непогода"].push(
+          { name: "Детский зонтик", count: 1, packed: false },
+          { name: "Детский дождевик яркий", count: 1, packed: false },
+          { name: "Резиновые сапоги детские", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'pet') {
+        combined["🌧️ Дождь / Непогода"].push(
+          { name: "Дождевик / Ветрозащитный комбинезон", count: 1, packed: false },
+          { name: "Специальное полотенце для лап", count: 1, packed: false }
+        );
+      }
+    }
+
+    // 7. Camp conditions
+    if (conditions.isCamp) {
+      if (!combined["🌲 Кемпинг / Лагерь"]) combined["🌲 Кемпинг / Лагерь"] = [];
+      if (ageGroup === 'adult') {
+        combined["🌲 Кемпинг / Лагерь"].push(
+          { name: "Спальный мешок & Коврик (пенка)", count: 1, packed: false },
+          { name: "Посуда металлическая (кружка, миска, ложка)", count: 1, packed: false },
+          { name: "Репеллент от комаров и клещей", count: 1, packed: false },
+          { name: "Сидушка туристическая (хоба)", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'child') {
+        combined["🌲 Кемпинг / Лагерь"].push(
+          { name: "Детский спальный мешок", count: 1, packed: false },
+          { name: "Фонарик детский ручной", count: 1, packed: false },
+          { name: "Индивидуальный бейдж с контактами", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'pet') {
+        combined["🌲 Кемпинг / Лагерь"].push(
+          { name: "Светящийся ошейник / маячок для леса", count: 1, packed: false },
+          { name: "Складная миска", count: 2, packed: false },
+          { name: "Длинный поводок-привязь (5-10м)", count: 1, packed: false }
+        );
+      }
+    }
+
+    // 8. Sport conditions
+    if (conditions.isSport) {
+      if (!combined["💪 Спорт / Активный отдых"]) combined["💪 Спорт / Активный отдых"] = [];
+      if (ageGroup === 'adult') {
+        combined["💪 Спорт / Активный отдых"].push(
+          { name: "Спортивная форма (футболка, тайтсы/шорты)", count: days > 3 ? 2 : 1, packed: false },
+          { name: "Спортивная бутылка для воды", count: 1, packed: false },
+          { name: "Фитнес-браслет / Смарт-часы с зарядкой", count: 1, packed: false },
+          { name: "Эластичный бинт / Спортивный тейп", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'child') {
+        combined["💪 Спорт / Активный отдых"].push(
+          { name: "Детская спортивная форма", count: 1, packed: false },
+          { name: "Спортивная бутылочка детская", count: 1, packed: false },
+          { name: "Удобная детская спортивная обувь", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'pet') {
+        combined["💪 Спорт / Активный отдых"].push(
+          { name: "Спортивная шлейка для бега", count: 1, packed: false },
+          { name: "Амортизирующий поводок", count: 1, packed: false },
+          { name: "Игрушка-пуллер / Фрисби", count: 1, packed: false }
+        );
+      }
+    }
+
     return combined;
   };
 
@@ -1085,6 +1180,19 @@ export default function App() {
     setActiveCategoryTab(catName);
   };
 
+  const startEditMember = (m: Member) => {
+    setEditingMemberId(m.id);
+    setNewMemberName(m.name);
+    setNewMemberGender(m.gender);
+    setNewMemberAgeGroup(m.ageGroup);
+    // Smooth scroll to traveler form so user sees it is editing
+    const formElement = document.querySelector('[placeholder="Имя путешественника..."]');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (formElement as HTMLInputElement).focus();
+    }
+  };
+
   const handleAddMember = () => {
     const name = newMemberName.trim();
     if (!name) return;
@@ -1111,23 +1219,43 @@ export default function App() {
       border = "border-purple-200";
     }
 
-    const newId = `user_${Date.now()}`;
-    const newObj: Member = {
-      id: newId,
-      name,
-      gender: newMemberGender,
-      ageGroup: newMemberAgeGroup,
-      color,
-      textColor,
-      border,
-      lists: {}
-    };
-    newObj.lists = generateLocalList(tripConditions, tripDays, newMemberGender, newMemberAgeGroup);
+    if (editingMemberId) {
+      setMembers(prev => prev.map(m => {
+        if (m.id === editingMemberId) {
+          return {
+            ...m,
+            name,
+            gender: newMemberGender,
+            ageGroup: newMemberAgeGroup,
+            color,
+            textColor,
+            border
+          };
+        }
+        return m;
+      }));
+      setEditingMemberId(null);
+      setNewMemberName('');
+      triggerNotification(`✏️ Изменения для "${name}" сохранены!`);
+    } else {
+      const newId = `user_${Date.now()}`;
+      const newObj: Member = {
+        id: newId,
+        name,
+        gender: newMemberGender,
+        ageGroup: newMemberAgeGroup,
+        color,
+        textColor,
+        border,
+        lists: {}
+      };
+      newObj.lists = generateLocalList(tripConditions, tripDays, newMemberGender, newMemberAgeGroup);
 
-    setMembers(prev => [...prev, newObj]);
-    setActiveMemberId(newId);
-    setNewMemberName('');
-    triggerNotification(`👋 Добавлен новый чемодан для ${name}!`);
+      setMembers(prev => [...prev, newObj]);
+      setActiveMemberId(newId);
+      setNewMemberName('');
+      triggerNotification(`👋 Добавлен новый чемодан для ${name}!`);
+    }
   };
 
   const initiateDeleteMember = (id: string, name: string) => {
@@ -1144,6 +1272,10 @@ export default function App() {
     const filtered = members.filter(m => m.id !== id);
     setMembers(filtered);
     setActiveMemberId(filtered.length > 0 ? filtered[0].id : '');
+    if (editingMemberId === id) {
+      setEditingMemberId(null);
+      setNewMemberName('');
+    }
     setDeleteConfirmTarget(null);
     triggerNotification(`🗑️ Чемодан "${name}" удален.`);
   };
@@ -1884,11 +2016,14 @@ export default function App() {
                         <span className="text-[10px] font-bold text-slate-500 uppercase">Особенности путешествия:</span>
                         <div className="grid grid-cols-2 gap-2">
                           {[
-                            { id: 'withKids', label: 'С детьми', icon: Baby, styles: 'bg-orange-50 text-orange-600 border-orange-100' },
-                            { id: 'isBeach', label: 'Море/Пляж', icon: Sun, styles: 'bg-yellow-50 text-yellow-600 border-yellow-100' },
-                            { id: 'isHike', label: 'Поход/Горы', icon: Tent, styles: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
-                            { id: 'isCold', label: 'Холодно', icon: Snowflake, styles: 'bg-sky-50 text-sky-600 border-sky-100' },
-                            { id: 'isHot', label: 'Жарко', icon: Flame, styles: 'bg-amber-50 text-amber-600 border-amber-100' }
+                            { id: 'withKids', label: 'С детьми', icon: Baby },
+                            { id: 'isBeach', label: 'Море/Пляж', icon: Sun },
+                            { id: 'isHike', label: 'Поход/Горы', icon: Tent },
+                            { id: 'isCold', label: 'Холодно', icon: Snowflake },
+                            { id: 'isHot', label: 'Жарко', icon: Flame },
+                            { id: 'isRain', label: 'Дождь', icon: CloudRain },
+                            { id: 'isCamp', label: 'Лагерь', icon: Trees },
+                            { id: 'isSport', label: 'Спорт', icon: Dumbbell }
                           ].map(cond => {
                             const isActive = tripConditions[cond.id as keyof TripConditions];
                             const Icon = cond.icon;
@@ -1902,7 +2037,7 @@ export default function App() {
                                   isActive 
                                     ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-sm' 
                                     : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                                } ${cond.id === 'isHot' ? 'col-span-2' : ''}`}
+                                }`}
                               >
                                 <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
                                 <span>{cond.label}</span>
@@ -2025,6 +2160,17 @@ export default function App() {
                                   <span className="absolute text-[8px] font-extrabold text-slate-600">{prog}%</span>
                                 </div>
 
+                                {/* Редактирование профиля */}
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, color: '#f59e0b' }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => { e.stopPropagation(); startEditMember(m); }}
+                                  className="text-slate-300 hover:text-amber-500 px-1 py-1 transition-colors cursor-pointer"
+                                  title="Редактировать путешественника"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </motion.button>
+
                                 {/* Удаление профиля */}
                                 <motion.button 
                                   whileHover={{ scale: 1.1, color: '#f43f5e' }}
@@ -2044,7 +2190,7 @@ export default function App() {
 
                     <div className="border-t border-slate-100/50 pt-3 flex flex-col gap-2.5">
                       <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                        <UserPlus className="w-3.5 h-3.5" /> Новый путешественник:
+                        <UserPlus className="w-3.5 h-3.5" /> {editingMemberId ? 'Редактировать путешественника:' : 'Новый путешественник:'}
                       </span>
                       
                       <div className="flex flex-col gap-2.5">
@@ -2129,7 +2275,7 @@ export default function App() {
                           value={newMemberName}
                           onChange={(e) => setNewMemberName(e.target.value)}
                           placeholder="Имя путешественника..."
-                          className="flex-1 min-w-0 bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                          className="flex-1 min-w-0 bg-white border border-orange-300 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
                         />
                         <motion.button 
                           whileHover={{ scale: 1.03 }}
@@ -2137,8 +2283,21 @@ export default function App() {
                           onClick={handleAddMember}
                           className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-xs px-3 rounded-xl uppercase tracking-wider border border-orange-200/50 transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0"
                         >
-                          Добавить
+                          {editingMemberId ? 'Сохранить' : 'Добавить'}
                         </motion.button>
+                        {editingMemberId && (
+                          <motion.button 
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => {
+                              setEditingMemberId(null);
+                              setNewMemberName('');
+                            }}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs px-3 rounded-xl uppercase tracking-wider border border-slate-200 transition-all cursor-pointer flex items-center justify-center shrink-0"
+                          >
+                            Отмена
+                          </motion.button>
+                        )}
                       </div>
 
                       {/* КНОПКА ГЕНЕРАЦИИ СПИСКОВ */}

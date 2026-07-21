@@ -28,4 +28,7 @@ export interface TripConditions {
   isBeach: boolean;
   isCold: boolean;
   isHot: boolean;
+  isRain: boolean;
+  isCamp: boolean;
+  isSport: boolean;
 }
