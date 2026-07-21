@@ -1,4 +1,6 @@
-const CACHE_NAME = 'family-pack-cache-v1';
+const urlParams = new URLSearchParams(self.location.search);
+const VERSION = urlParams.get('v') || '1.0.0';
+const CACHE_NAME = `family-pack-cache-v${VERSION}`;
 
 // Ресурсы, которые кэшируются сразу при установке
 const PRECACHE_ASSETS = [

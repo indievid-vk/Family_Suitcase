@@ -43,43 +43,52 @@
             }
           });
 
-          navigator.serviceWorker.register('./sw.js')
-            .then((reg) => {
-              console.log('[PWA] Service Worker зарегистрирован на область:', reg.scope);
+          const registerSW = (version) => {
+            navigator.serviceWorker.register(`./sw.js?v=${version}`)
+              .then((reg) => {
+                console.log('[PWA] Service Worker зарегистрирован на область:', reg.scope, 'Версия:', version);
 
-              // Проверка наличия ожидающего обновления при загрузке
-              if (reg.waiting) {
-                window.pwaUpdateAvailable = true;
-                window.dispatchEvent(new CustomEvent('pwa-update-available'));
-              }
-
-              // Следим за процессом установки нового Service Worker
-              reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
-                if (newWorker) {
-                  newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                      window.pwaUpdateAvailable = true;
-                      window.dispatchEvent(new CustomEvent('pwa-update-available'));
-                    }
-                  });
+                // Проверка наличия ожидающего обновления при загрузке
+                if (reg.waiting) {
+                  window.pwaUpdateAvailable = true;
+                  window.dispatchEvent(new CustomEvent('pwa-update-available'));
                 }
-              });
 
-              // Активный поллинг обновлений каждые 15 минут
-              setInterval(() => {
-                reg.update().catch(() => {});
-              }, 15 * 60 * 1000);
+                // Следим за процессом установки нового Service Worker
+                reg.addEventListener('updatefound', () => {
+                  const newWorker = reg.installing;
+                  if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        window.pwaUpdateAvailable = true;
+                        window.dispatchEvent(new CustomEvent('pwa-update-available'));
+                      }
+                    });
+                  }
+                });
 
-              // Проверка при выходе приложения из фонового режима
-              document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
+                // Активный поллинг обновлений каждые 15 минут
+                setInterval(() => {
                   reg.update().catch(() => {});
-                }
+                }, 15 * 60 * 1000);
+
+                // Проверка при выходе приложения из фонового режима
+                document.addEventListener('visibilitychange', () => {
+                  if (document.visibilityState === 'visible') {
+                    reg.update().catch(() => {});
+                  }
+                });
+              })
+              .catch((err) => {
+                console.error('[PWA] Не удалось зарегистрировать Service Worker:', err);
               });
-            })
-            .catch((err) => {
-              console.error('[PWA] Не удалось зарегистрировать Service Worker:', err);
+          };
+
+          fetch('./version.json?cache-bust=' + Date.now())
+            .then((res) => res.ok ? res.json() : { version: '1.0.0' })
+            .catch(() => ({ version: '1.0.0' }))
+            .then((data) => {
+              registerSW(data.version || '1.0.0');
             });
         });
       }
