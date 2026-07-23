@@ -1551,8 +1551,8 @@ export default function App() {
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-6 bg-orange-900/20 rounded-t-xl border-t-4 border-x-4 border-orange-900/10"></div>
           
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white border border-orange-200/80 p-1 shrink-0 shadow-md flex items-center justify-center overflow-hidden">
-              <img id="app-header-icon" src="/icon-256.png" alt="Семейный Чемодан" className="w-full h-full object-cover rounded-xl" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-orange-800 border border-orange-300/50 shrink-0 shadow-inner">
+              <Briefcase className="w-8 h-8" />
             </div>
             <div>
               <h1 className="font-extrabold text-3xl tracking-tighter bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Семейный Чемодан</h1>
