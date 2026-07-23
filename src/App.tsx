@@ -1813,28 +1813,21 @@ export default function App() {
                 className="bg-white/95 rounded-3xl p-6 max-w-sm w-full border border-orange-100 flex flex-col gap-4 relative text-slate-800 text-center shadow-2xl"
               >
                 <div className="mx-auto w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100 shadow-md">
-                  <RefreshCw className="w-7 h-7 animate-spin" style={{ animationDuration: '3s' }} />
+                  <Sparkles className="w-7 h-7" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="font-extrabold text-base text-slate-900">Вышло обновление!</h3>
-                  <p className="text-[10px] text-orange-600 font-bold tracking-wider uppercase mt-0.5">Доступна новая версия планировщика</p>
+                  <h3 className="font-extrabold text-base text-slate-900">Приложение обновилось!</h3>
+                  <p className="text-[10px] text-orange-600 font-bold tracking-wider uppercase mt-0.5">Стало еще удобнее</p>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Мы обновили алгоритмы умных дорожных сборов, оптимизировали работу в режиме офлайн и исправили мелкие недочеты. Ваши текущие списки и профили будут полностью сохранены!
+                  Мы внесли улучшения, чтобы ваши сборы стали быстрее и комфортнее.
                 </p>
                 <div className="flex gap-3 mt-2">
                   <button 
-                    onClick={() => setIsPwaUpdateAvailable(false)}
-                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Позже
-                  </button>
-                  <button 
                     onClick={handleTriggerUpdate}
-                    className="flex-1 py-2.5 bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-xs rounded-xl border border-orange-200/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Обновить сейчас
+                    К сборам
                   </button>
                 </div>
               </motion.div>
