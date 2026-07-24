@@ -88,8 +88,9 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+              const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
+                cache.put(event.request, responseToCache);
               });
             }
           })
