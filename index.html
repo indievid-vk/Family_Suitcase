@@ -30,9 +30,44 @@
       // Определение режима установки (standalone)
       window.isAppInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
+      // Функция гарантии сохранения текущих ресурсов страницы в кэш для офлайна
+      const cacheCurrentPageAssets = () => {
+        if (!('caches' in window)) return;
+        caches.open('family-pack-cache-v0.0.1').then((cache) => {
+          const urls = [
+            window.location.href,
+            './',
+            './index.html',
+            './manifest.json',
+            './icon.svg',
+            './icon-256.png',
+            './icon-512.png',
+            './version.json'
+          ];
+          document.querySelectorAll('script[src], link[rel="stylesheet"][href], img[src]').forEach((el) => {
+            const u = el.src || el.href;
+            if (u && !u.startsWith('data:') && !u.startsWith('blob:')) {
+              urls.push(u);
+            }
+          });
+          Array.from(new Set(urls)).forEach((url) => {
+            fetch(url, { cache: 'no-cache' })
+              .then((res) => {
+                if (res.ok || res.type === 'opaque') {
+                  cache.put(url, res);
+                }
+              })
+              .catch(() => {});
+          });
+        }).catch(() => {});
+      };
+
       // Регистрируем Service Worker только на верхнем уровне (не во фрейме), чтобы избежать ошибок в превью AI Studio
       if ('serviceWorker' in navigator && window.self === window.top) {
         window.addEventListener('load', () => {
+          // Кэшируем ассеты при успешной загрузке страницы
+          cacheCurrentPageAssets();
+
           // Перезагрузка страницы при изменении контроллера (когда новые файлы активированы)
           let refreshing = false;
           navigator.serviceWorker.addEventListener('controllerchange', () => {

@@ -1,40 +1,54 @@
 const VERSION = '0.0.1';
 const CACHE_NAME = `family-pack-cache-v${VERSION}`;
 
-// Ресурсы, которые кэшируются сразу при установке
+// Базовые ресурсы для гарантированного офлайна
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './icon-256.png',
+  './icon-512.png',
+  './version.json'
 ];
 
-// Установка Service Worker и кэширование базовых ресурсов
+// Установка Service Worker, кэширование ресурсов и немедленная активация
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Pre-caching offline assets');
-      return cache.addAll(PRECACHE_ASSETS);
+      console.log('[Service Worker] Кэшируем офлайн-ресурсы');
+      return Promise.allSettled(
+        PRECACHE_ASSETS.map((asset) =>
+          fetch(asset, { cache: 'no-cache' })
+            .then((res) => {
+              if (res.ok || res.type === 'opaque') {
+                return cache.put(asset, res);
+              }
+            })
+            .catch((err) => console.warn('[Service Worker] Ошибка кэширования ресурса:', asset, err))
+        )
+      );
     })
   );
 });
 
-// Слушаем сообщения от клиента (для принудительной активации обновления)
+// Сообщения от клиента
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[Service Worker] Получена команда SKIP_WAITING, активируем новую версию');
+    console.log('[Service Worker] Получена команда SKIP_WAITING');
     self.skipWaiting();
   }
 });
 
-// Активация и удаление старых версий кэша
+// Активация и очистка старых версий кэша
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
+            console.log('[Service Worker] Удаляем старый кэш:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -43,56 +57,51 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Перехват запросов и обслуживание из кэша / сети
+// Перехват сетевых запросов
 self.addEventListener('fetch', (event) => {
-  // Обрабатываем только GET-запросы
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Игнорируем запросы к панели разработчика (HMR, Vite ws)
-  if (url.pathname.startsWith('/@vite') || url.hostname === 'localhost' && url.port && url.port !== '3000') {
+  // Игнорируем сокеты и служебные запросы Vite dev-сервера
+  if (url.pathname.startsWith('/@vite') || (url.hostname === 'localhost' && url.port && url.port !== '3000')) {
     return;
   }
 
-  // Не кэшируем версию приложения
+  // Запрос версии
   if (url.pathname.endsWith('version.json')) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        new Response(JSON.stringify({ version: VERSION }), {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    );
     return;
   }
 
-  // Стратегия обслуживания
+  // Обслуживание из кэша (Cache First с фоновым обновлением и офлайн-фоллбэками)
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // 1. Если это статический ассет (JS, CSS, изображения, шрифты), используем Cache-First
-      const isStaticAsset = 
-        url.pathname.includes('/assets/') || 
-        url.pathname.endsWith('.js') || 
-        url.pathname.endsWith('.css') || 
-        url.pathname.endsWith('.svg') || 
-        url.pathname.endsWith('.png') || 
-        url.pathname.endsWith('.ico') ||
-        url.hostname.includes('fonts.googleapis.com') ||
-        url.hostname.includes('fonts.gstatic.com');
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Если ресурс есть в кэше — отдаем его мгновенно
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, networkResponse);
+              });
+            }
+          })
+          .catch(() => {/* В офлайне фоновое обновление тихо проваливается */});
 
-      if (isStaticAsset && cachedResponse) {
-        // Возвращаем из кэша, но фоном обновляем (Stale-While-Revalidate)
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
-          }
-        }).catch(() => {/* Игнорируем ошибки сети во время фонового обновления */});
-        
         return cachedResponse;
       }
 
-      // 2. Для остальных запросов (HTML страницы, манифест) используем Network-First
+      // Если в кэше ресурса нет — загружаем из сети и сохраняем в кэш
       return fetch(event.request)
         .then((networkResponse) => {
-          // Если запрос успешен, клонируем его и сохраняем в кэш
-          if (networkResponse.status === 200) {
+          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
@@ -101,16 +110,33 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Если сеть недоступна, возвращаем кэшированную копию, если она есть
-          if (cachedResponse) {
-            return cachedResponse;
+          // Если сеть недоступна и ресурса не было в кэше по точному URL:
+          // Для страниц навигации возвращаем index.html из кэша
+          if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+            return caches.match('./index.html')
+              .then((res) => res || caches.match('./'))
+              .then((res) => res || caches.match('index.html'))
+              .then((res) => {
+                if (res) return res;
+                return caches.open(CACHE_NAME).then((cache) => {
+                  return cache.keys().then((keys) => {
+                    const htmlKey = keys.find((k) => k.url.endsWith('index.html') || k.url.endsWith('/'));
+                    if (htmlKey) return cache.match(htmlKey);
+                  });
+                });
+              });
           }
-          
-          // Для навигационных запросов (переход на другие страницы), если совсем ничего нет,
-          // возвращаем базовый index.html из кэша (fallback)
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
+
+          // Для изображений возвращаем иконку
+          if (event.request.destination === 'image') {
+            return caches.match('./icon.svg');
           }
+
+          return new Response('Офлайн-режим: ресурс недоступен', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' })
+          });
         });
     })
   );
