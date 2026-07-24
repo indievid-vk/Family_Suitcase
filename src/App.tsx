@@ -577,13 +577,14 @@ export default function App() {
   // Check for PWA updates periodically
   useEffect(() => {
     const checkVersion = async () => {
+      if (!navigator.onLine) return;
       try {
         const response = await fetch('./version.json?cache-bust=' + Date.now());
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        if (data.version !== APP_VERSION) {
+        if (data.version && data.version !== APP_VERSION) {
           setIsPwaUpdateAvailable(true);
         }
       } catch (e) {
@@ -689,15 +690,23 @@ export default function App() {
 
   const handleTriggerInstall = async () => {
     const promptEvent = (window as any).deferredPrompt;
-    if (!promptEvent) {
+    if (promptEvent && pwaModalPlatform !== 'ios') {
+      try {
+        promptEvent.prompt();
+        const choiceResult = await promptEvent.userChoice;
+        console.log(`[PWA] Результат установки: ${choiceResult?.outcome}`);
+        (window as any).deferredPrompt = null;
+        setIsInstallPromptAvailable(false);
+        if (choiceResult?.outcome !== 'accepted') {
+          setIsPwaModalOpen(true);
+        }
+      } catch (err) {
+        console.warn('[PWA] Ошибка запуска нативной установки:', err);
+        setIsPwaModalOpen(true);
+      }
+    } else {
       setIsPwaModalOpen(true);
-      return;
     }
-    promptEvent.prompt();
-    const { outcome } = await promptEvent.userChoice;
-    console.log(`[PWA] Результат установки: ${outcome}`);
-    (window as any).deferredPrompt = null;
-    setIsInstallPromptAvailable(false);
   };
 
   const handleTriggerUpdate = () => {
@@ -1816,18 +1825,15 @@ export default function App() {
                   <Sparkles className="w-7 h-7" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="font-extrabold text-base text-slate-900">Приложение обновилось!</h3>
-                  <p className="text-[10px] text-orange-600 font-bold tracking-wider uppercase mt-0.5">Стало еще удобнее</p>
+                  <h3 className="font-extrabold text-lg text-slate-900">Приложение обновилось!</h3>
+                  <p className="text-xs text-orange-600 font-bold tracking-wide mt-0.5">Пользоваться стало еще удобнее</p>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Мы внесли улучшения, чтобы ваши сборы стали быстрее и комфортнее.
-                </p>
                 <div className="flex gap-3 mt-2">
                   <button 
                     onClick={handleTriggerUpdate}
                     className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    К сборам
+                    Начать
                   </button>
                 </div>
               </motion.div>
@@ -2825,8 +2831,8 @@ export default function App() {
                   <Sparkles className="w-8 h-8" />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <h2 className="text-xl font-extrabold text-slate-900">Привет!</h2>
-                  <p className="text-slate-600">Приложение Семейный чемодан установлено</p>
+                  <h2 className="text-xl font-extrabold text-slate-900">Поздравляем!</h2>
+                  <p className="text-slate-600 text-sm">Приложение установлено и готово к работе</p>
                 </div>
                 <button
                   onClick={closeWelcome}
