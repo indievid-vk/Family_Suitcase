@@ -491,6 +491,91 @@ function getMemberGradient(m: Member): string {
   return 'from-sky-400 to-blue-400';
 }
 
+interface PendingImport {
+  members: Member[];
+  tripDestination?: string;
+  tripDays?: number;
+  tripConditions?: TripConditions;
+  filename?: string;
+}
+
+// Функция объединения существующих и импортируемых членов/списков без перезаписи
+function mergeMembersData(currentMembers: Member[], importedMembers: Member[]): Member[] {
+  const result: Member[] = currentMembers.map(m => {
+    const copyLists: Lists = {};
+    if (m.lists) {
+      Object.keys(m.lists).forEach(cat => {
+        copyLists[cat] = (m.lists[cat] || []).map(item => ({ ...item }));
+      });
+    }
+    return {
+      ...m,
+      lists: copyLists,
+      categoryOrder: m.categoryOrder ? [...m.categoryOrder] : undefined
+    };
+  });
+
+  importedMembers.forEach((impMember) => {
+    const normalizedImp = normalizeMember(impMember);
+    const existingIndex = result.findIndex(
+      m => m.name.trim().toLowerCase() === normalizedImp.name.trim().toLowerCase()
+    );
+
+    if (existingIndex === -1) {
+      // Это новый чемодан (путешественник) — добавляем его целикм!
+      const isIdTaken = result.some(r => r.id === normalizedImp.id);
+      const uniqueId = isIdTaken
+        ? 'm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)
+        : normalizedImp.id;
+
+      result.push({
+        ...normalizedImp,
+        id: uniqueId
+      });
+    } else {
+      // Человек уже существует — объединяем его категории и позиций
+      const existingMember = result[existingIndex];
+      const mergedLists: Lists = { ...existingMember.lists };
+      const categoryOrder = [
+        ...(existingMember.categoryOrder || Object.keys(mergedLists))
+      ];
+
+      Object.keys(normalizedImp.lists || {}).forEach((catName) => {
+        const impItems = normalizedImp.lists[catName] || [];
+
+        if (!mergedLists[catName]) {
+          // Если этой категории у текущего человека еще не было — добавляем ее со всеми вещами из файла
+          mergedLists[catName] = impItems.map(item => ({ ...item }));
+          if (!categoryOrder.includes(catName)) {
+            categoryOrder.push(catName);
+          }
+        } else {
+          // Категория уже есть — объединяем вещи без затирания существующих статусов
+          const currentItems = mergedLists[catName];
+          const existingNames = new Set(
+            currentItems.map(it => it.name.trim().toLowerCase())
+          );
+
+          // Добавляем только те позиции из файла, которых еще НЕТ у человека
+          const newItems = impItems
+            .filter(impItem => !existingNames.has(impItem.name.trim().toLowerCase()))
+            .map(item => ({ ...item }));
+
+          mergedLists[catName] = [...currentItems, ...newItems];
+        }
+      });
+
+      result[existingIndex] = {
+        ...existingMember,
+        lists: mergedLists,
+        categoryOrder
+      };
+    }
+  });
+
+  return result;
+}
+
 export default function App() {
   const [members, setMembers] = useState<Member[]>(() => {
     const saved = localStorage.getItem('family_pack_members');
@@ -756,6 +841,10 @@ export default function App() {
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleteAllConfirmOpen, setIsDeleteAllConfirmOpen] = useState<boolean>(false);
 
+  // Состояние импорта с возможностью объединения/добавления
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [isImportChoiceModalOpen, setIsImportChoiceModalOpen] = useState<boolean>(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const headerRef = useRef<HTMLElement>(null);
@@ -849,6 +938,74 @@ export default function App() {
     }
   };
 
+  const processImportPayload = (importData: any, filename?: string) => {
+    let importedMembers: any[] | null = null;
+    let tripDestinationOpt: string | undefined = undefined;
+    let tripDaysOpt: number | undefined = undefined;
+    let tripConditionsOpt: TripConditions | undefined = undefined;
+
+    if (Array.isArray(importData)) {
+      importedMembers = importData;
+    } else if (importData && typeof importData === 'object' && Array.isArray(importData.members)) {
+      importedMembers = importData.members;
+      if (importData.tripDestination) tripDestinationOpt = importData.tripDestination;
+      if (importData.tripDays) tripDaysOpt = importData.tripDays;
+      if (importData.tripConditions) tripConditionsOpt = importData.tripConditions;
+    }
+
+    if (importedMembers && importedMembers.length > 0) {
+      const validated = importedMembers.map((m: any) => normalizeMember(m));
+      const payload: PendingImport = {
+        members: validated,
+        tripDestination: tripDestinationOpt,
+        tripDays: tripDaysOpt,
+        tripConditions: tripConditionsOpt,
+        filename
+      };
+
+      // Если текущих списков сборов нет (список пуст) — загружаем сразу
+      if (members.length === 0) {
+        applyImportPayload(payload, 'replace');
+      } else {
+        // Иначе открываем окно выбора: Объединение (дополнение) или Полная замена
+        setPendingImport(payload);
+        setIsImportChoiceModalOpen(true);
+        setIsExportModalOpen(false);
+      }
+    } else {
+      triggerNotification('⚠️ Неверный формат файла сборов.');
+    }
+  };
+
+  const applyImportPayload = (payload: PendingImport, mode: 'merge' | 'replace') => {
+    if (mode === 'merge') {
+      const merged = mergeMembersData(members, payload.members);
+      setMembers(merged);
+      if (payload.tripDestination && !tripDestination) {
+        setTripDestination(payload.tripDestination);
+      }
+      if (payload.tripDays && !tripDays) {
+        setTripDays(payload.tripDays);
+      }
+      if (payload.tripConditions && !tripConditions) {
+        setTripConditions(payload.tripConditions);
+      }
+      if (!activeMemberId || !merged.some(m => m.id === activeMemberId)) {
+        setActiveMemberId(merged[0]?.id || '');
+      }
+      triggerNotification('➕ Новые списки и позиции из файла успешно добавлены!');
+    } else {
+      setMembers(payload.members);
+      if (payload.tripDestination) setTripDestination(payload.tripDestination);
+      if (payload.tripDays) setTripDays(payload.tripDays);
+      if (payload.tripConditions) setTripConditions(payload.tripConditions);
+      setActiveMemberId(payload.members[0]?.id || '');
+      triggerNotification('📥 Данные из файла полностью восстановлены!');
+    }
+    setPendingImport(null);
+    setIsImportChoiceModalOpen(false);
+  };
+
   const handleImportFromFile = (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -857,24 +1014,7 @@ export default function App() {
       try {
         const text = event.target?.result as string;
         const importData = JSON.parse(text);
-        let importedMembers = null;
-        if (Array.isArray(importData)) {
-          importedMembers = importData;
-        } else if (importData && typeof importData === 'object' && importData.members && Array.isArray(importData.members)) {
-          importedMembers = importData.members;
-          if (importData.tripDestination) setTripDestination(importData.tripDestination);
-          if (importData.tripDays) setTripDays(importData.tripDays);
-          if (importData.tripConditions) setTripConditions(importData.tripConditions);
-        }
-
-        if (importedMembers && importedMembers.length > 0) {
-          const validated = importedMembers.map((m: any) => normalizeMember(m));
-          setMembers(validated);
-          setActiveMemberId(validated[0].id);
-          triggerNotification('📥 Данные из файла успешно восстановлены!');
-        } else {
-          triggerNotification('⚠️ Неверный формат файла сборов.');
-        }
+        processImportPayload(importData, file.name);
       } catch (err) {
         triggerNotification('⚠️ Ошибка при чтении файла.');
       }
@@ -1417,15 +1557,8 @@ export default function App() {
   const handleImportConfig = () => {
     try {
       const parsed = JSON.parse(importText);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
-        setMembers(parsed);
-        setActiveMemberId(parsed[0].id);
-        setIsExportModalOpen(false);
-        setImportText('');
-        triggerNotification('📥 Данные чемоданов успешно импортированы!');
-      } else {
-        throw new Error('Некорректная структура JSON.');
-      }
+      processImportPayload(parsed, 'Конфигурация из текста');
+      setImportText('');
     } catch (err) {
       triggerNotification('❌ Некорректный формат конфигурации.');
     }
@@ -1678,7 +1811,114 @@ export default function App() {
             </div>
           )}
         </AnimatePresence>
-        
+
+        {/* МОДАЛКА ВЫБОРА РЕЖИМА ИМПОРТА (ОБЪЕДИНИТЬ СУЩЕСТВУЮЩИЕ ИЛИ ПЕРЕЗАПИСАТЬ) */}
+        <AnimatePresence>
+          {isImportChoiceModalOpen && pendingImport && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                className="bg-white/95 rounded-3xl p-6 max-w-md w-full border border-white flex flex-col gap-4 relative text-slate-800 shadow-2xl pointer-events-auto"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">
+                        Загрузка сборов из файла
+                      </h3>
+                      <p className="text-[11px] text-slate-400 font-semibold">
+                        {pendingImport.filename ? pendingImport.filename : 'Получены списки сборов'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsImportChoiceModalOpen(false);
+                      setPendingImport(null);
+                    }}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Сводка об импортируемом файле */}
+                <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100/80 flex flex-col gap-1.5 text-xs text-slate-600">
+                  <div className="flex items-center justify-between font-bold text-slate-700">
+                    <span>Найдено в файле:</span>
+                    <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-bold">
+                      {pendingImport.members.length} {pendingImport.members.length === 1 ? 'чемодан' : pendingImport.members.length < 5 ? 'чемодана' : 'чемоданов'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {pendingImport.members.map((m) => (
+                      <span key={m.id} className="text-[11px] px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-medium flex items-center gap-1">
+                        👤 {m.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  У вас уже есть созданные списки сборов. Выберите, как поступить с данными из файла:
+                </p>
+
+                {/* Кнопки выбора действия */}
+                <div className="flex flex-col gap-2.5">
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => applyImportPayload(pendingImport, 'merge')}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs py-3 px-4 rounded-2xl shadow-lg shadow-emerald-500/20 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-2.5 text-left">
+                      <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <Plus className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-extrabold normal-case">Дополнить (Объединить)</span>
+                        <span className="text-[10px] font-normal text-emerald-100 normal-case">Добавит новые позиции и чемоданы, не затирая текущие</span>
+                      </div>
+                    </div>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => applyImportPayload(pendingImport, 'replace')}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs py-3 px-4 rounded-2xl border border-slate-200/60 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-2.5 text-left">
+                      <div className="w-8 h-8 rounded-xl bg-slate-200/80 flex items-center justify-center shrink-0">
+                        <RefreshCw className="w-4 h-4 text-slate-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-800 normal-case">Заменить всё</span>
+                        <span className="text-[10px] font-normal text-slate-500 normal-case">Полностью очистит текущие списки и загрузит данные из файла</span>
+                      </div>
+                    </div>
+                  </motion.button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsImportChoiceModalOpen(false);
+                    setPendingImport(null);
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600 font-semibold cursor-pointer py-1 transition-colors text-center"
+                >
+                  Отмена
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* МОДАЛКИ PWA: УСТАНОВКА И ОБНОВЛЕНИЯ */}
         <AnimatePresence>
           {isPwaModalOpen && (
