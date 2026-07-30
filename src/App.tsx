@@ -636,10 +636,23 @@ export default function App() {
   const [isPwaModalOpen, setIsPwaModalOpen] = useState<boolean>(false);
   const [pwaModalPlatform, setPwaModalPlatform] = useState<'android' | 'ios' | 'desktop'>('android');
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
+  const hasTriggeredWelcomeRef = useRef<boolean>(false);
 
   useEffect(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-    if (isStandalone && !localStorage.getItem('hasSeenWelcome')) {
+    const isStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
+
+    if (
+      isStandalone && 
+      !localStorage.getItem('hasSeenWelcome') && 
+      !sessionStorage.getItem('hasSeenWelcome') &&
+      !hasTriggeredWelcomeRef.current
+    ) {
+      hasTriggeredWelcomeRef.current = true;
+      localStorage.setItem('hasSeenWelcome', 'true');
+      sessionStorage.setItem('hasSeenWelcome', 'true');
       setIsWelcomeModalOpen(true);
     }
   }, []);
@@ -657,6 +670,7 @@ export default function App() {
   const closeWelcome = () => {
     setIsWelcomeModalOpen(false);
     localStorage.setItem('hasSeenWelcome', 'true');
+    sessionStorage.setItem('hasSeenWelcome', 'true');
   };
 
   // Check for PWA updates periodically
