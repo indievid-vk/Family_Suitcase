@@ -24,12 +24,26 @@ export interface Member {
 }
 
 export interface TripConditions {
-  withKids: boolean;
-  isHike: boolean;
-  isBeach: boolean;
-  isCold: boolean;
-  isHot: boolean;
-  isRain: boolean;
-  isCamp: boolean;
-  isSport: boolean;
+  isVacation?: boolean; // Отдых
+  isWork?: boolean;     // Работа
+  withKids?: boolean;   // С детьми
+  withPets?: boolean;   // С питомцами
+  isHike?: boolean;     // Поход/Горы
+  isBeach?: boolean;    // Море/Пляж
+  isCamp?: boolean;     // Лагерь
+  isSport?: boolean;    // Спорт
+  isCold?: boolean;     // Холод
+  isHot?: boolean;      // Жара
+  isRain?: boolean;     // Дождь
+}
+
+export interface SavedTrip {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt?: string;
+  tripDestination: string;
+  tripDays: number;
+  tripConditions: TripConditions;
+  members: Member[];
 }

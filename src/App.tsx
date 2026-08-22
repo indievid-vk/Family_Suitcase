@@ -50,9 +50,18 @@ import {
   CloudRain,
   Trees,
   Dumbbell,
-  Pencil
+  Pencil,
+  Palmtree,
+  Bookmark,
+  BookmarkPlus,
+  RotateCcw,
+  FileDown,
+  HardDrive,
+  FolderHeart,
+  Save,
+  History
 } from 'lucide-react';
-import { Item, Lists, Member, TripConditions, Gender, AgeGroup } from './types';
+import { Item, Lists, Member, TripConditions, Gender, AgeGroup, SavedTrip } from './types';
 
 const APP_VERSION = "0.0.1";
 
@@ -279,6 +288,10 @@ const getCategoryIcon = (name: string) => {
   const clean = cleanCategoryName(name);
   if (clean.includes("Документы")) return FileText;
   if (clean.includes("Еда") || clean.includes("Питание") || clean.includes("Корм")) return Utensils;
+  if (clean.includes("Работа") || clean.includes("Командировк") || clean.includes("Бизнес")) return Briefcase;
+  if (clean.includes("Отдых") || clean.includes("Релакс")) return Palmtree;
+  if (clean.includes("Для детей") || clean.includes("родителям")) return Baby;
+  if (clean.includes("Для питомца")) return PawPrint;
   if (clean.includes("Одежда")) return Shirt;
   if (clean.includes("Обувь")) return Footprints;
   if (clean.includes("Гигиена")) return Smile;
@@ -300,6 +313,10 @@ const getCategoryStyles = (name: string) => {
   const clean = cleanCategoryName(name);
   if (clean.includes("Документы")) return { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-100", accent: "orange" };
   if (clean.includes("Еда") || clean.includes("Питание") || clean.includes("Корм")) return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "amber" };
+  if (clean.includes("Работа") || clean.includes("Командировк") || clean.includes("Бизнес")) return { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100", accent: "blue" };
+  if (clean.includes("Отдых") || clean.includes("Релакс")) return { bg: "bg-teal-50", text: "text-teal-600", border: "border-teal-100", accent: "teal" };
+  if (clean.includes("Для детей") || clean.includes("родителям")) return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "amber" };
+  if (clean.includes("Для питомца")) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "emerald" };
   if (clean.includes("Одежда")) return { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-100", accent: "pink" };
   if (clean.includes("Обувь")) return { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", accent: "rose" };
   if (clean.includes("Гигиена")) return { bg: "bg-teal-50", text: "text-teal-600", border: "border-teal-100", accent: "teal" };
@@ -321,6 +338,10 @@ const CATEGORY_ORDER = [
   "📋 Документы",
   "🍎 Еда",
   "💊 Лекарства",
+  "💼 Работа / Командировка",
+  "🌴 Отдых и Релакс",
+  "👶 В помощь родителям",
+  "🐕 Для питомца (в дорогу)",
   "🥩 Питание",
   "👕 Одежда",
   "👟 Обувь",
@@ -616,14 +637,17 @@ export default function App() {
       }
     }
     return {
+      isVacation: true,
+      isWork: false,
       withKids: true,
+      withPets: false,
       isHike: false,
       isBeach: true,
+      isCamp: false,
+      isSport: false,
       isCold: false,
       isHot: false,
-      isRain: false,
-      isCamp: false,
-      isSport: false
+      isRain: false
     };
   });
 
@@ -859,7 +883,33 @@ export default function App() {
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [isImportChoiceModalOpen, setIsImportChoiceModalOpen] = useState<boolean>(false);
 
+  // Хранилище сохраненных поездок («Мои поездки» и шаблоны)
+  const [savedTrips, setSavedTrips] = useState<SavedTrip[]>(() => {
+    const saved = localStorage.getItem('family_pack_saved_trips');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return [];
+  });
+
+  const [isSavedTripsModalOpen, setIsSavedTripsModalOpen] = useState<boolean>(false);
+  const [isSaveCurrentTripModalOpen, setIsSaveCurrentTripModalOpen] = useState<boolean>(false);
+  const [isStorageInfoExpanded, setIsStorageInfoExpanded] = useState<boolean>(false);
+  const [saveTripTitleInput, setSaveTripTitleInput] = useState<string>('');
+  const [saveTripAlsoDownload, setSaveTripAlsoDownload] = useState<boolean>(false);
+  const [editingTripId, setEditingTripId] = useState<string | null>(null);
+  const [editingTripTitle, setEditingTripTitle] = useState<string>('');
+  const [tripToDelete, setTripToDelete] = useState<SavedTrip | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const savedTripFileInputRef = useRef<HTMLInputElement>(null);
 
   const headerRef = useRef<HTMLElement>(null);
   const travelersRef = useRef<HTMLElement>(null);
@@ -1078,6 +1128,271 @@ export default function App() {
     localStorage.setItem('family_pack_conditions', JSON.stringify(tripConditions));
   }, [tripConditions]);
 
+  useEffect(() => {
+    localStorage.setItem('family_pack_saved_trips', JSON.stringify(savedTrips));
+  }, [savedTrips]);
+
+  // Функции для работы с разделом «Мои поездки»
+  const getTripStats = (trip: SavedTrip) => {
+    let totalItems = 0;
+    let packedItems = 0;
+    (trip.members || []).forEach(m => {
+      if (m.lists) {
+        Object.values(m.lists).forEach(items => {
+          (items || []).forEach(it => {
+            totalItems += it.count || 1;
+            if (it.packed) packedItems += it.count || 1;
+          });
+        });
+      }
+    });
+    const percent = totalItems > 0 ? Math.round((packedItems / totalItems) * 100) : 0;
+    return { totalItems, packedItems, percent };
+  };
+
+  const openSaveCurrentTripDialog = () => {
+    const names = members.map(m => m.name).filter(Boolean).join(', ');
+    const defaultTitle = `${tripDestination || 'Поездка'} (${tripDays} дн.${names ? ', ' + names : ''})`;
+    setSaveTripTitleInput(defaultTitle);
+    setSaveTripAlsoDownload(false);
+    setIsSaveCurrentTripModalOpen(true);
+  };
+
+  const handleExportSingleTrip = (trip: SavedTrip) => {
+    try {
+      const data = {
+        version: "1.0",
+        type: "family_pack_trip",
+        trip
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = (trip.title || 'Поездка').replace(/[\\/:*?"<>|]/g, '_').substring(0, 50);
+      a.download = `Поездка_${safeTitle}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      triggerNotification(`💾 Файл «Поездка_${safeTitle}.json» сохранен на диск!`);
+    } catch (e) {
+      triggerNotification('⚠️ Не удалось сохранить файл поездки на диск.');
+    }
+  };
+
+  const executeSaveCurrentTrip = () => {
+    const finalTitle = saveTripTitleInput.trim() || `${tripDestination || 'Поездка'} (${tripDays} дн.)`;
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    const newTrip: SavedTrip = {
+      id: 'trip_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      title: finalTitle,
+      createdAt: `${dateFormatted}, ${timeFormatted}`,
+      updatedAt: `${dateFormatted}, ${timeFormatted}`,
+      tripDestination,
+      tripDays,
+      tripConditions: { ...tripConditions },
+      members: JSON.parse(JSON.stringify(members))
+    };
+
+    setSavedTrips(prev => [newTrip, ...prev]);
+    setIsSaveCurrentTripModalOpen(false);
+
+    if (saveTripAlsoDownload) {
+      handleExportSingleTrip(newTrip);
+    }
+
+    triggerNotification(`✅ Поездка «${finalTitle}» сохранена в «Мои поездки»!`);
+  };
+
+  const handleLoadSavedTrip = (trip: SavedTrip, mode: 'fresh' | 'exact') => {
+    const loadedMembers: Member[] = JSON.parse(JSON.stringify(trip.members || [])).map((m: Member) => {
+      if (mode === 'fresh') {
+        const resetLists: Lists = {};
+        if (m.lists) {
+          Object.keys(m.lists).forEach(cat => {
+            resetLists[cat] = (m.lists[cat] || []).map(item => ({
+              ...item,
+              packed: false
+            }));
+          });
+        }
+        return {
+          ...m,
+          lists: resetLists
+        };
+      }
+      return m;
+    });
+
+    setMembers(loadedMembers);
+    if (trip.tripDestination) setTripDestination(trip.tripDestination);
+    if (trip.tripDays) setTripDays(trip.tripDays);
+    if (trip.tripConditions) setTripConditions(trip.tripConditions);
+    if (loadedMembers.length > 0) setActiveMemberId(loadedMembers[0].id);
+
+    setIsSavedTripsModalOpen(false);
+
+    if (mode === 'fresh') {
+      confetti({
+        particleCount: 120,
+        spread: 60,
+        origin: { y: 0.7 }
+      });
+      triggerNotification(`🚀 Поездка «${trip.title}» загружена! Все галочки сброшены для нового сбора.`);
+    } else {
+      triggerNotification(`📥 Поездка «${trip.title}» загружена с сохраненным прогрессом!`);
+    }
+  };
+
+  const handleExportAllSavedTrips = () => {
+    try {
+      const data = {
+        version: "1.0",
+        type: "family_pack_all_trips_backup",
+        savedTrips,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Semya_Vse_sohranennye_poezdki_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      triggerNotification(`💾 Резервная копия (${savedTrips.length} поездок) успешно скачана!`);
+    } catch (e) {
+      triggerNotification('⚠️ Не удалось создать резервную копию.');
+    }
+  };
+
+  const handleImportIntoSavedTrips = (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+        
+        // Вариант 1: Резервная копия со всеми поездками
+        if (parsed && Array.isArray(parsed.savedTrips)) {
+          const importedList = parsed.savedTrips.filter((t: any) => t && t.title && Array.isArray(t.members));
+          if (importedList.length > 0) {
+            setSavedTrips(prev => {
+              const existingIds = new Set(prev.map(p => p.id));
+              const newEntries = importedList.map((t: any) => ({
+                ...t,
+                id: existingIds.has(t.id) ? 'trip_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) : t.id
+              }));
+              return [...newEntries, ...prev];
+            });
+            triggerNotification(`📥 Импортировано ${importedList.length} поездок в библиотеку!`);
+            return;
+          }
+        }
+
+        // Вариант 2: Файл конкретной поездки с оберткой
+        if (parsed && parsed.trip && parsed.trip.title && Array.isArray(parsed.trip.members)) {
+          const t = parsed.trip;
+          const newTrip: SavedTrip = {
+            ...t,
+            id: 'trip_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            members: t.members.map((m: any) => normalizeMember(m))
+          };
+          setSavedTrips(prev => [newTrip, ...prev]);
+          triggerNotification(`📥 Поездка «${newTrip.title}» добавлена в библиотеку!`);
+          return;
+        }
+
+        // Вариант 3: Обычный экспортированный файл сборов
+        let importedMembers: any[] | null = null;
+        let dest = file.name.replace('.json', '');
+        let days = 7;
+        let conds: TripConditions = {};
+
+        if (Array.isArray(parsed)) {
+          importedMembers = parsed;
+        } else if (parsed && Array.isArray(parsed.members)) {
+          importedMembers = parsed.members;
+          if (parsed.tripDestination) dest = parsed.tripDestination;
+          if (parsed.tripDays) days = parsed.tripDays;
+          if (parsed.tripConditions) conds = parsed.tripConditions;
+        }
+
+        if (importedMembers && importedMembers.length > 0) {
+          const validated = importedMembers.map((m: any) => normalizeMember(m));
+          const newTrip: SavedTrip = {
+            id: 'trip_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            title: dest.startsWith('Поездка_') ? dest.replace('Поездка_', '') : `${dest} (${days} дн.)`,
+            createdAt: new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
+            tripDestination: dest,
+            tripDays: days,
+            tripConditions: conds,
+            members: validated
+          };
+          setSavedTrips(prev => [newTrip, ...prev]);
+          triggerNotification(`📥 Файл «${file.name}» сохранен как шаблон поездки!`);
+        } else {
+          triggerNotification('⚠️ Не удалось распознать формат файла сборов.');
+        }
+      } catch (err) {
+        triggerNotification('⚠️ Ошибка при чтении файла.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleOverwriteSavedTrip = (tripId: string) => {
+    const target = savedTrips.find(t => t.id === tripId);
+    if (!target) return;
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    setSavedTrips(prev => prev.map(t => {
+      if (t.id === tripId) {
+        return {
+          ...t,
+          updatedAt: `${dateFormatted}, ${timeFormatted}`,
+          tripDestination,
+          tripDays,
+          tripConditions: { ...tripConditions },
+          members: JSON.parse(JSON.stringify(members))
+        };
+      }
+      return t;
+    }));
+
+    triggerNotification(`🔄 Шаблон «${target.title}» обновлен текущими списками!`);
+  };
+
+  const handleDeleteSavedTrip = (tripId: string) => {
+    const target = savedTrips.find(t => t.id === tripId);
+    setSavedTrips(prev => prev.filter(t => t.id !== tripId));
+    setTripToDelete(null);
+    triggerNotification(`🗑️ Поездка «${target?.title || ''}» удалена из сохраненных.`);
+  };
+
+  const handleRenameSavedTrip = (tripId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    setSavedTrips(prev => prev.map(t => {
+      if (t.id === tripId) {
+        return { ...t, title: newTitle.trim() };
+      }
+      return t;
+    }));
+    setEditingTripId(null);
+    setEditingTripTitle('');
+    triggerNotification('✏️ Название поездки обновлено!');
+  };
+
   const triggerNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(''), 4000);
@@ -1134,7 +1449,74 @@ export default function App() {
       });
     });
 
-    // 2. Beach conditions
+    // 1. Работа / Командировка
+    if (conditions.isWork) {
+      if (ageGroup === 'adult') {
+        if (!combined["💼 Работа / Командировка"]) combined["💼 Работа / Командировка"] = [];
+        combined["💼 Работа / Командировка"].push(
+          { name: "Ноутбук и зарядное устройство", count: 1, packed: false },
+          { name: "Командировочное удостоверение / Документы", count: 1, packed: false },
+          { name: "Компьютерная мышь и кабели/адаптеры", count: 1, packed: false },
+          { name: "Гарнитура / Наушники для онлайн-встреч", count: 1, packed: false },
+          { name: "Бейдж / Пропуск / Визитки", count: 1, packed: false },
+          { name: "Блокнот и деловая ручка для записей", count: 1, packed: false },
+          { name: "Флеш-карта / Внешний SSD накопитель", count: 1, packed: false },
+          { name: gender === 'male' ? "Деловой костюм / Рубашка" : "Деловой костюм / Блузка", count: 1, packed: false },
+          { name: "Классическая обувь / Туфли", count: 1, packed: false }
+        );
+      }
+    }
+
+    // 2. Отдых и Релакс
+    if (conditions.isVacation) {
+      if (!combined["🌴 Отдых и Релакс"]) combined["🌴 Отдых и Релакс"] = [];
+      if (ageGroup === 'adult') {
+        combined["🌴 Отдых и Релакс"].push(
+          { name: "Книга / Электронная книга (ридер)", count: 1, packed: false },
+          { name: "Маска для сна и беруши в дорогу", count: 1, packed: false },
+          { name: "Наушники для музыки и подкастов", count: 1, packed: false },
+          { name: "Удобная свободная одежда для отдыха", count: 2, packed: false }
+        );
+      } else if (ageGroup === 'child') {
+        combined["🌴 Отдых и Релакс"].push(
+          { name: "Книга сказок / Детские головоломки", count: 1, packed: false },
+          { name: "Компактная дорожная игра", count: 1, packed: false }
+        );
+      } else if (ageGroup === 'pet') {
+        combined["🌴 Отдых и Релакс"].push(
+          { name: "Любимая мягкая подстилка / Плед", count: 1, packed: false },
+          { name: "Лакомство-погрызушка длительного действия", count: 1, packed: false }
+        );
+      }
+    }
+
+    // 3. С детьми (в помощь родителям)
+    if (conditions.withKids && ageGroup === 'adult') {
+      if (!combined["👶 В помощь родителям"]) combined["👶 В помощь родителям"] = [];
+      combined["👶 В помощь родителям"].push(
+        { name: "Детская аптечка (градусник, жаропонижающее, пластыри)", count: 1, packed: false },
+        { name: "Влажные детские салфетки (большая пачка)", count: 2, packed: false },
+        { name: "Детские перекусы и питьевая вода с дозатором", count: 3, packed: false },
+        { name: "Запасные пакеты для сменной одежды", count: 5, packed: false },
+        { name: "Нагрудник / Слюнявчик", count: 1, packed: false },
+        { name: "Дорожный складной горшок / накладка", count: 1, packed: false }
+      );
+    }
+
+    // 4. С питомцами (в дорогу)
+    if (conditions.withPets && ageGroup === 'adult') {
+      if (!combined["🐕 Для питомца (в дорогу)"]) combined["🐕 Для питомца (в дорогу)"] = [];
+      combined["🐕 Для питомца (в дорогу)"].push(
+        { name: "Ветеринарный паспорт с отметками о прививках", count: 1, packed: false },
+        { name: "Поводок, ошейник с адресником и намордник", count: 1, packed: false },
+        { name: "Дорожная поилка и складная миска", count: 1, packed: false },
+        { name: "Запас сухого корма и лакомств в дорогу", count: 1, packed: false },
+        { name: "Пакеты для уборки за собакой", count: 1, packed: false },
+        { name: "Влажные салфетки для лап и шерсти", count: 1, packed: false }
+      );
+    }
+
+    // 5. Море / Пляж
     if (conditions.isBeach) {
       if (!combined["🏖️ Пляж и Отдых"]) combined["🏖️ Пляж и Отдых"] = [];
       if (ageGroup === 'adult') {
@@ -1143,7 +1525,8 @@ export default function App() {
             { name: "Мужские плавки", count: 1, packed: false },
             { name: "Пляжные сланцы", count: 1, packed: false },
             { name: "Солнцезащитные очки", count: 1, packed: false },
-            { name: "Солнцезащитный крем SPF 50", count: 1, packed: false }
+            { name: "Солнцезащитный крем SPF 50+", count: 1, packed: false },
+            { name: "Пляжное полотенце и сумка", count: 1, packed: false }
           );
         } else {
           combined["🏖️ Пляж и Отдых"].push(
@@ -1152,14 +1535,13 @@ export default function App() {
             { name: "Широкополая шляпа", count: 1, packed: false },
             { name: "Солнцезащитные очки", count: 1, packed: false },
             { name: "Пляжная сумка & Полотенце", count: 1, packed: false },
-            { name: "Солнцезащитный крем SPF 50", count: 1, packed: false }
+            { name: "Солнцезащитный крем SPF 50+", count: 1, packed: false }
           );
         }
       } else if (ageGroup === 'child') {
-        // Child
         combined["🏖️ Пляж и Отдых"].push(
           { name: gender === 'male' ? "Детские плавки" : "Детский купальник", count: 1, packed: false },
-          { name: "Надувной круг / Нарукавники", count: 1, packed: false },
+          { name: "Надувной круг / Нарукавники / Жилет", count: 1, packed: false },
           { name: "Детский солнцезащитный крем SPF 50+", count: 1, packed: false },
           { name: "Набор игрушек для песка (ведерко, лопатка)", count: 1, packed: false }
         );
@@ -1172,14 +1554,15 @@ export default function App() {
       }
     }
 
-    // 3. Hike conditions
+    // 6. Поход / Горы
     if (conditions.isHike) {
       if (!combined["⛺ Снаряжение & Поход"]) combined["⛺ Снаряжение & Поход"] = [];
       if (ageGroup === 'adult') {
         combined["⛺ Снаряжение & Поход"].push(
           { name: "Треккинговые прочные ботинки", count: 1, packed: false },
-          { name: "Плотный дождевик", count: 1, packed: false },
+          { name: "Плотный дождевик / Ветровка", count: 1, packed: false },
           { name: "Налобный фонарик + запасные батарейки", count: 1, packed: false },
+          { name: "Треккинговые палки", count: 1, packed: false },
           { name: "Спрей от клещей и комаров", count: 1, packed: false }
         );
         if (gender === 'male') {
@@ -1188,7 +1571,6 @@ export default function App() {
           combined["⛺ Снаряжение & Поход"].push({ name: "Термос для горячего чая", count: 1, packed: false });
         }
       } else if (ageGroup === 'child') {
-        // Child
         combined["⛺ Снаряжение & Поход"].push(
           { name: "Детская удобная обувь с цепкой подошвой", count: 1, packed: false },
           { name: "Детский легкий дождевик", count: 1, packed: false },
@@ -1204,22 +1586,22 @@ export default function App() {
       }
     }
 
-    // 4. Cold conditions
+    // 7. Холод
     if (conditions.isCold) {
       if (!combined["❄️ Теплые вещи (Холод)"]) combined["❄️ Теплые вещи (Холод)"] = [];
       if (ageGroup === 'adult') {
         combined["❄️ Теплые вещи (Холод)"].push(
           { name: gender === 'male' ? "Термобелье мужское (комплект)" : "Термобелье женское (комплект)", count: 1, packed: false },
-          { name: "Теплый шерстяной свитер", count: 1, packed: false },
+          { name: "Теплый шерстяной свитер / флис", count: 1, packed: false },
           { name: "Теплая непромокаемая куртка / Пуховик", count: 1, packed: false },
           { name: "Теплая шапка и перчатки", count: 1, packed: false },
+          { name: "Теплые термоноски, пар", count: days > 3 ? 3 : 2, packed: false },
           { name: "Гигиеническая помада от обветривания", count: 1, packed: false }
         );
         if (gender === 'female') {
           combined["❄️ Теплые вещи (Холод)"].push({ name: "Теплый шарф / Бафф", count: 1, packed: false });
         }
       } else if (ageGroup === 'child') {
-        // Child
         combined["❄️ Теплые вещи (Холод)"].push(
           { name: "Детское термобелье (комплект)", count: 1, packed: false },
           { name: "Теплый комбинезон / зимняя куртка", count: 1, packed: false },
@@ -1235,15 +1617,15 @@ export default function App() {
       }
     }
 
-    // 5. Hot conditions
+    // 8. Жара
     if (conditions.isHot) {
       if (!combined["☀️ Летние вещи (Жара)"]) combined["☀️ Летние вещи (Жара)"] = [];
       if (ageGroup === 'adult') {
         combined["☀️ Летние вещи (Жара)"].push(
           { name: "Солнцезащитные очки", count: 1, packed: false },
-          { name: "Солнцезащитный крем SPF 50", count: 1, packed: false },
+          { name: "Солнцезащитный крем SPF 50+", count: 1, packed: false },
           { name: "Легкий головной убор (кепка / панама / соломенная шляпа)", count: 1, packed: false },
-          { name: "Свободная дышащая одежда (шорты, майки, лен)", count: days > 3 ? 3 : 1, packed: false },
+          { name: "Свободная дышащая одежда (шорты, майки, лен)", count: days > 3 ? 3 : 2, packed: false },
           { name: "Освежающий спрей / Термальная вода", count: 1, packed: false }
         );
       } else if (ageGroup === 'child') {
@@ -1262,15 +1644,16 @@ export default function App() {
       }
     }
 
-    // 6. Rain conditions
+    // 9. Дождь
     if (conditions.isRain) {
       if (!combined["🌧️ Дождь / Непогода"]) combined["🌧️ Дождь / Непогода"] = [];
       if (ageGroup === 'adult') {
         combined["🌧️ Дождь / Непогода"].push(
-          { name: "Зонт складной", count: 1, packed: false },
+          { name: "Зонт складной прочный", count: 1, packed: false },
           { name: "Водонепроницаемый чехол для телефона", count: 1, packed: false },
           { name: "Плотный дождевик / Ветровка", count: 1, packed: false },
-          { name: "Сушилка для обуви", count: 1, packed: false }
+          { name: "Сушилка для обуви электрическая", count: 1, packed: false },
+          { name: "Водоотталкивающий спрей для обуви", count: 1, packed: false }
         );
       } else if (ageGroup === 'child') {
         combined["🌧️ Дождь / Непогода"].push(
@@ -1286,7 +1669,7 @@ export default function App() {
       }
     }
 
-    // 7. Camp conditions
+    // 10. Лагерь
     if (conditions.isCamp) {
       if (!combined["🌲 Кемпинг / Лагерь"]) combined["🌲 Кемпинг / Лагерь"] = [];
       if (ageGroup === 'adult') {
@@ -1294,13 +1677,14 @@ export default function App() {
           { name: "Спальный мешок & Коврик (пенка)", count: 1, packed: false },
           { name: "Посуда металлическая (кружка, миска, ложка)", count: 1, packed: false },
           { name: "Репеллент от комаров и клещей", count: 1, packed: false },
-          { name: "Сидушка туристическая (хоба)", count: 1, packed: false }
+          { name: "Сидушка туристическая (хоба)", count: 1, packed: false },
+          { name: "Спички в гермоупаковке / Зажигалка", count: 1, packed: false }
         );
       } else if (ageGroup === 'child') {
         combined["🌲 Кемпинг / Лагерь"].push(
           { name: "Детский спальный мешок", count: 1, packed: false },
           { name: "Фонарик детский ручной", count: 1, packed: false },
-          { name: "Индивидуальный бейдж с контактами", count: 1, packed: false }
+          { name: "Индивидуальный бейдж с контактами родителей", count: 1, packed: false }
         );
       } else if (ageGroup === 'pet') {
         combined["🌲 Кемпинг / Лагерь"].push(
@@ -1311,21 +1695,24 @@ export default function App() {
       }
     }
 
-    // 8. Sport conditions
+    // 11. Спорт
     if (conditions.isSport) {
       if (!combined["💪 Спорт / Активный отдых"]) combined["💪 Спорт / Активный отдых"] = [];
       if (ageGroup === 'adult') {
         combined["💪 Спорт / Активный отдых"].push(
           { name: "Спортивная форма (футболка, тайтсы/шорты)", count: days > 3 ? 2 : 1, packed: false },
+          { name: "Спортивные кроссовки", count: 1, packed: false },
           { name: "Спортивная бутылка для воды", count: 1, packed: false },
           { name: "Фитнес-браслет / Смарт-часы с зарядкой", count: 1, packed: false },
-          { name: "Эластичный бинт / Спортивный тейп", count: 1, packed: false }
+          { name: "Эластичный бинт / Спортивный тейп", count: 1, packed: false },
+          { name: "Быстросохнущее полотенце из микрофибры", count: 1, packed: false }
         );
       } else if (ageGroup === 'child') {
         combined["💪 Спорт / Активный отдых"].push(
           { name: "Детская спортивная форма", count: 1, packed: false },
           { name: "Спортивная бутылочка детская", count: 1, packed: false },
-          { name: "Удобная детская спортивная обувь", count: 1, packed: false }
+          { name: "Удобная детская спортивная обувь", count: 1, packed: false },
+          { name: "Скакалка / Мяч спортивный", count: 1, packed: false }
         );
       } else if (ageGroup === 'pet') {
         combined["💪 Спорт / Активный отдых"].push(
@@ -1617,6 +2004,13 @@ export default function App() {
         accept=".json" 
         className="hidden" 
       />
+      <input 
+        type="file" 
+        ref={savedTripFileInputRef} 
+        onChange={handleImportIntoSavedTrips} 
+        accept=".json" 
+        className="hidden" 
+      />
       <div className="max-w-[1400px] mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 relative">
         
         {/* МОДАЛКА УДАЛЕНИЯ */}
@@ -1701,12 +2095,26 @@ export default function App() {
         {/* ШАПКА ПРИЛОЖЕНИЯ (ЧЕМОДАН) */}
         <header 
           ref={headerRef}
-          className={`sticky top-4 z-40 bg-white/80 backdrop-blur-xl rounded-[2rem] p-6 border-4 border-orange-200/50 shadow-2xl shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 mt-6 transition-opacity duration-500 ${headerMounted ? 'opacity-100' : 'opacity-0'}`}
+          className={`sticky top-4 z-40 bg-white/80 backdrop-blur-xl rounded-[2rem] p-6 border-4 border-orange-200/50 shadow-2xl shadow-orange-950/5 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 mt-6 transition-opacity duration-500 relative ${headerMounted ? 'opacity-100' : 'opacity-0'}`}
         >
-          {/* Handle of the suitcase */}
+          {/* Ручка чемодана */}
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-6 bg-orange-900/20 rounded-t-xl border-t-4 border-x-4 border-orange-900/10"></div>
           
-          <div className="flex items-center gap-4">
+          {/* Значок (i) в правом верхнем углу */}
+          <motion.button 
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => {
+              setIsAboutModalOpen(true);
+              setCollapsedModals(prev => ({ ...prev, about: false }));
+            }}
+            className="absolute top-4 right-4 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 bg-white/95 hover:bg-orange-50 border border-slate-200/90 rounded-2xl text-orange-700 shadow-xs flex items-center justify-center transition-all cursor-pointer z-10"
+            title="О приложении и инструкция"
+          >
+            <Info className="w-5 h-5 text-orange-600" />
+          </motion.button>
+
+          <div className="flex items-center gap-4 pr-8 md:pr-0">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-orange-800 border border-orange-300/50 shrink-0 shadow-inner">
               <Briefcase className="w-8 h-8" />
             </div>
@@ -1716,115 +2124,501 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
+          <div className="flex items-center gap-2 md:mr-10">
             <motion.button 
               whileHover={{ scale: 1.03, y: -1 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setIsExportModalOpen(true);
-                setCollapsedModals(prev => ({ ...prev, export: false }));
-              }}
-              className="px-4 py-2.5 bg-white/90 hover:bg-orange-50 border border-slate-200 rounded-2xl text-orange-700 text-xs font-bold shadow-sm flex items-center gap-2 transition-all cursor-pointer"
+              onClick={() => setIsSavedTripsModalOpen(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 flex items-center gap-2 transition-all cursor-pointer"
             >
-              <Share2 className="w-4 h-4" />
-              <span>Поделиться сборами</span>
-            </motion.button>
-
-            <motion.button 
-              whileHover={{ scale: 1.05, y: -1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setIsAboutModalOpen(true);
-                setCollapsedModals(prev => ({ ...prev, about: false }));
-              }}
-              className="w-10 h-10 bg-white/90 hover:bg-orange-50 border border-slate-200 rounded-2xl text-orange-700 shadow-sm flex items-center justify-center transition-all cursor-pointer"
-              title="О приложении"
-            >
-              <Info className="w-5 h-5" />
+              <Bookmark className="w-4 h-4 text-white" />
+              <span>Мои поездки</span>
+              {savedTrips.length > 0 && (
+                <span className="px-2 py-0.5 bg-white/25 text-white text-[11px] font-extrabold rounded-full">
+                  {savedTrips.length}
+                </span>
+              )}
             </motion.button>
           </div>
         </header>
 
-        {/* МОДАЛКА ЭКСПОРТА / ИМПОРТА */}
+        {/* МОДАЛКА «МОИ ПОЕЗДКИ И ШАБЛОНЫ» */}
         <AnimatePresence>
-          {isExportModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md">
+          {isSavedTripsModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-md">
               <motion.div 
-                layoutId="export-modal-container"
-                initial={{ scale: 0.95, y: 15 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 15 }}
-                className="bg-white/95 rounded-3xl border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto p-6 max-w-xl w-full gap-4"
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                className="bg-white/95 rounded-[2rem] border border-white flex flex-col relative text-slate-800 shadow-2xl pointer-events-auto p-5 sm:p-7 max-w-3xl w-full max-h-[90vh] gap-4"
               >
-                {/* ХЕДЕР */}
-                <div className="flex items-center justify-between border-b border-slate-100/80 pb-3 relative">
+                {/* ХЕДЕР МОДАЛКИ */}
+                <div className="flex items-center justify-between border-b border-slate-100/80 pb-4">
                   <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/80 shrink-0">
+                      <Bookmark className="w-5 h-5" />
+                    </div>
                     <div>
-                      <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 select-none">
-                        <Share2 className="w-4 h-4 text-orange-500" />
-                        Поделиться сборами
+                      <h3 className="font-extrabold text-base sm:text-lg text-slate-900 flex items-center gap-2">
+                        <span>Мои поездки и шаблоны</span>
+                        <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-bold rounded-full">
+                          {savedTrips.length}
+                        </span>
                       </h3>
-                      <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Экспорт и импорт списков через файлы</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Сохраненные поездки для быстрого повторного сбора через год или сезон
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <button 
-                      onClick={() => setIsExportModalOpen(false)}
-                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                      title="Закрыть"
+                  <button 
+                    onClick={() => setIsSavedTripsModalOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Закрыть"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* ВЕРХНЯЯ ПАНЕЛЬ ДЕЙСТВИЙ */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/60">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={openSaveCurrentTripDialog}
+                      className="px-3.5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
                     >
-                      <X className="w-4 h-4" />
-                    </button>
+                      <Save className="w-4 h-4" />
+                      <span>+ Сохранить текущие сборы</span>
+                    </motion.button>
+
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => savedTripFileInputRef.current?.click()}
+                      className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Загрузить сохраненную поездку из файла .json"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-orange-500" />
+                      <span>Импорт из файла</span>
+                    </motion.button>
                   </div>
                 </div>
 
-                <div className="overflow-hidden flex flex-col gap-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 cursor-default" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                        <Download className="w-3.5 h-3.5" /> 1. Сохранить записи:
-                      </span>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        Сохраните файл со всеми списками вещей и настройками на ваше устройство. Файл можно отправить близким в любой мессенджер.
-                      </p>
-                      <motion.button 
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={handleExportToFile}
-                        className="mt-auto w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-orange-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Сохранить записи
-                      </motion.button>
+                {/* СВОРАЧИВАЮЩЕЕСЯ ОКНО «ХРАНЕНИЕ ПОЕЗДОК» */}
+                <div className="bg-amber-50/70 border border-amber-200/60 rounded-2xl overflow-hidden transition-all">
+                  <button 
+                    type="button"
+                    onClick={() => setIsStorageInfoExpanded(prev => !prev)}
+                    className="w-full px-3.5 py-2.5 flex items-center justify-between text-left text-xs font-bold text-amber-900 hover:bg-amber-100/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">💡</span>
+                      <span>Хранение поездок (как это работает)</span>
                     </div>
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-800">
+                      <span>{isStorageInfoExpanded ? 'Свернуть' : 'Подробнее'}</span>
+                      {isStorageInfoExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </div>
+                  </button>
 
-                    <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                        <Upload className="w-3.5 h-3.5" /> 2. Восстановить записи:
-                      </span>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        Выберите ранее сохраненный файл со списками вещей `.json` для мгновенной загрузки и восстановления данных:
+                  <AnimatePresence>
+                    {isStorageInfoExpanded && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="px-3.5 pb-3 text-xs text-amber-950 leading-relaxed border-t border-amber-200/40 pt-2"
+                      >
+                        <strong>Хранение поездок:</strong> Списки сохраняются внутри браузера на этом устройстве. При повторной поездке нажмите кнопку <span className="font-bold text-emerald-700">«Собрать заново»</span> — все списки вещей загрузятся со сброшенными галочками. Чтобы сборы не стёрлись при очистке кэша браузера, сохраните копию на диск кнопкой <span className="font-bold text-slate-800">«💾 Файл»</span> на нужной поездке.
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* СПИСОК СОХРАНЕННЫХ ПОЕЗДОК */}
+                <div className="overflow-y-auto max-h-[48vh] pr-1 flex flex-col gap-3.5 custom-scrollbar">
+                  {savedTrips.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                      <div className="w-14 h-14 rounded-2xl bg-orange-100/50 text-orange-500 flex items-center justify-center mb-3">
+                        <FolderHeart className="w-7 h-7" />
+                      </div>
+                      <h4 className="font-extrabold text-sm text-slate-800">У вас пока нет сохраненных поездок</h4>
+                      <p className="text-xs text-slate-500 max-w-md mt-1 mb-4 leading-relaxed">
+                        Сохраните текущую конфигурацию сборов (направление, количество дней, особенности и всех участников со списками), чтобы использовать ее повторно в будущем.
                       </p>
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                          fileInputRef.current?.click();
-                          setIsExportModalOpen(false);
-                        }}
-                        className="mt-auto w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-[11px] py-2.5 px-3 rounded-xl border border-emerald-200/50 uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        onClick={openSaveCurrentTripDialog}
+                        className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 cursor-pointer"
                       >
-                        <Upload className="w-3.5 h-3.5" />
-                        Восстановить записи
+                        <Save className="w-4 h-4" />
+                        <span>Сохранить текущие сборы как шаблон</span>
                       </motion.button>
                     </div>
-                  </div>
+                  ) : (
+                    savedTrips.map((trip) => {
+                      const { totalItems, packedItems, percent } = getTripStats(trip);
+                      const isEditing = editingTripId === trip.id;
+
+                      return (
+                        <div 
+                          key={trip.id}
+                          className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md transition-all flex flex-col gap-3 group"
+                        >
+                          {/* ВЕРХНЯЯ СТРОКА КАРТОЧКИ */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                            <div className="flex-1">
+                              {isEditing ? (
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="text"
+                                    value={editingTripTitle}
+                                    onChange={(e) => setEditingTripTitle(e.target.value)}
+                                    className="bg-white border border-orange-300 rounded-lg px-2.5 py-1 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 flex-1"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleRenameSavedTrip(trip.id, editingTripTitle);
+                                      if (e.key === 'Escape') setEditingTripId(null);
+                                    }}
+                                  />
+                                  <button 
+                                    onClick={() => handleRenameSavedTrip(trip.id, editingTripTitle)}
+                                    className="p-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 cursor-pointer"
+                                    title="Сохранить название"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => setEditingTripId(null)}
+                                    className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 cursor-pointer"
+                                    title="Отмена"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-extrabold text-sm sm:text-base text-slate-800 flex items-center gap-1.5">
+                                    <span>{trip.title}</span>
+                                  </h4>
+                                  <button 
+                                    onClick={() => {
+                                      setEditingTripId(trip.id);
+                                      setEditingTripTitle(trip.title);
+                                    }}
+                                    className="p-1 text-slate-400 hover:text-orange-600 rounded-md transition-colors cursor-pointer opacity-80 group-hover:opacity-100"
+                                    title="Переименовать"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                              
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 mt-1">
+                                <span>📅 Сохранено: {trip.createdAt}</span>
+                                {trip.updatedAt && trip.updatedAt !== trip.createdAt && (
+                                  <span>🔄 Изменено: {trip.updatedAt}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* ПРОГРЕСС УПАКОВКИ */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
+                                📦 {totalItems} вещей
+                              </span>
+                              {totalItems > 0 && (
+                                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl ${percent === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800'}`}>
+                                  {percent}% собрано
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* ТЕГИ И ПАРАМЕТРЫ ПОЕЗДКИ */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-orange-500" />
+                              <span>{trip.tripDestination || 'Без направления'}</span>
+                            </span>
+
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-orange-500" />
+                              <span>{trip.tripDays} дн.</span>
+                            </span>
+
+                            {/* Иконки особенностей */}
+                            {trip.tripConditions?.isVacation && (
+                              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-orange-100">
+                                <Palmtree className="w-3 h-3" /> Отдых
+                              </span>
+                            )}
+                            {trip.tripConditions?.isWork && (
+                              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-orange-100">
+                                <Briefcase className="w-3 h-3" /> Работа
+                              </span>
+                            )}
+                            {trip.tripConditions?.withKids && (
+                              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-orange-100">
+                                <Baby className="w-3 h-3" /> С детьми
+                              </span>
+                            )}
+                            {trip.tripConditions?.withPets && (
+                              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-orange-100">
+                                <PawPrint className="w-3 h-3" /> С питомцами
+                              </span>
+                            )}
+                            {trip.tripConditions?.isBeach && (
+                              <span className="px-2 py-1 bg-amber-50 text-amber-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-amber-100">
+                                <Sun className="w-3 h-3" /> Пляж
+                              </span>
+                            )}
+                            {trip.tripConditions?.isHiking && (
+                              <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-emerald-100">
+                                <Tent className="w-3 h-3" /> Поход
+                              </span>
+                            )}
+                            {trip.tripConditions?.isCamp && (
+                              <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-emerald-100">
+                                <Trees className="w-3 h-3" /> Лагерь
+                              </span>
+                            )}
+                            {trip.tripConditions?.isSport && (
+                              <span className="px-2 py-1 bg-blue-50 text-blue-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-blue-100">
+                                <Dumbbell className="w-3 h-3" /> Спорт
+                              </span>
+                            )}
+                            {trip.tripConditions?.isCold && (
+                              <span className="px-2 py-1 bg-cyan-50 text-cyan-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-cyan-100">
+                                <Snowflake className="w-3 h-3" /> Холод
+                              </span>
+                            )}
+                            {trip.tripConditions?.isHot && (
+                              <span className="px-2 py-1 bg-rose-50 text-rose-700 text-[11px] font-medium rounded-lg flex items-center gap-1 border border-rose-100">
+                                <Flame className="w-3 h-3" /> Жара
+                              </span>
+                            )}
+                            {trip.tripConditions?.isRain && (
+                              <span className="px-2 py-1 bg-slate-100 text-slate-700 text-[11px] font-medium rounded-lg flex items-center gap-1">
+                                <CloudRain className="w-3 h-3" /> Дождь
+                              </span>
+                            )}
+                          </div>
+
+                          {/* ПУТЕШЕСТВЕННИКИ В ПОЕЗДКЕ */}
+                          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Участники:</span>
+                            {trip.members?.map(m => (
+                              <span key={m.id} className="px-2 py-0.5 bg-white border border-slate-200/80 rounded-md text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                <span>{m.ageGroup === 'pet' ? '🐾' : m.gender === 'female' ? '👩' : '👨'}</span>
+                                <span>{m.name}</span>
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* ПАНЕЛЬ ДЕЙСТВИЙ КАРТОЧКИ */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* ГЛАВНАЯ КНОПКА: Собрать заново (сброс галочек) */}
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleLoadSavedTrip(trip, 'fresh')}
+                                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                                title="Загрузить поездку и сбросить все галочки, чтобы собирать чемоданы с нуля"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Собрать заново (сбросить галочки)</span>
+                              </motion.button>
+
+                              {/* КНОПКА: Загрузить с прогрессом */}
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleLoadSavedTrip(trip, 'exact')}
+                                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer"
+                                title="Загрузить поездку точно в том виде, в каком она была сохранена (с текущими галочками)"
+                              >
+                                <span>Загрузить с прогрессом</span>
+                              </motion.button>
+                            </div>
+
+                            {/* ИКОНКИ ДЕЙСТВИЙ */}
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <button 
+                                onClick={() => handleExportSingleTrip(trip)}
+                                className="p-2 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-xl border border-slate-200 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                                title="Сохранить файл этой поездки на диск (.json)"
+                              >
+                                <FileDown className="w-4 h-4 text-orange-500" />
+                                <span className="hidden sm:inline">Файл</span>
+                              </button>
+
+                              <button 
+                                onClick={() => handleOverwriteSavedTrip(trip.id)}
+                                className="p-2 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                                title="Перезаписать этот шаблон текущими списками из открытого чемодана"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                              </button>
+
+                              <button 
+                                onClick={() => setTripToDelete(trip)}
+                                className="p-2 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                                title="Удалить сохраненную поездку"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* НИЖНЯЯ ПАНЕЛЬ */}
+                <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
+                  <span className="text-xs text-slate-400">
+                    💡 Можно сохранить неограниченное количество поездок и шаблонов
+                  </span>
+                  <button 
+                    onClick={() => setIsSavedTripsModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Закрыть
+                  </button>
                 </div>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
+
+        {/* МОДАЛКА «СОХРАНИТЬ ТЕКУЩУЮ ПОЕЗДКУ» */}
+        <AnimatePresence>
+          {isSaveCurrentTripModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white/95 rounded-[2rem] p-6 sm:p-7 max-w-md w-full border border-white flex flex-col gap-4 relative text-slate-800 shadow-2xl"
+              >
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                  <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/80 shrink-0">
+                    <Save className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900">Сохранить поездку в архив</h3>
+                    <p className="text-xs text-slate-500">Сохранение текущих списков как шаблона</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Название поездки:</label>
+                    <input 
+                      type="text" 
+                      value={saveTripTitleInput}
+                      onChange={(e) => setSaveTripTitleInput(e.target.value)}
+                      placeholder="Например: Сочи (10 дн., Папа, Мама)"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Сводка параметров */}
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col gap-2 text-xs text-slate-600">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Направление:</span>
+                      <span className="font-bold text-slate-800">{tripDestination || 'Не указано'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Длительность:</span>
+                      <span className="font-bold text-slate-800">{tripDays} дней</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Участников:</span>
+                      <span className="font-bold text-slate-800">{members.length} чел. ({members.map(m => m.name).join(', ')})</span>
+                    </div>
+                  </div>
+
+                  {/* Чекбокс: сохранение файла на диск */}
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-orange-50/60 border border-orange-100 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={saveTripAlsoDownload}
+                      onChange={(e) => setSaveTripAlsoDownload(e.target.checked)}
+                      className="mt-0.5 rounded text-orange-600 focus:ring-orange-500 accent-orange-500 cursor-pointer"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-orange-950">Сохранить резервный файл на диск (.json)</span>
+                      <span className="text-[10px] text-orange-800/80 font-medium">Файл сохранится в папку «Загрузки» для 100% надежности при очистке кэша</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex gap-2.5 mt-2">
+                  <button 
+                    onClick={() => setIsSaveCurrentTripModalOpen(false)}
+                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Отмена
+                  </button>
+                  <button 
+                    onClick={executeSaveCurrentTrip}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Сохранить в «Мои поездки»</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* МОДАЛКА УДАЛЕНИЯ ПОЕЗДКИ */}
+        <AnimatePresence>
+          {tripToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+              <motion.div 
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white/95 rounded-3xl p-6 max-w-sm w-full border border-white flex flex-col gap-4 relative text-slate-800 text-center shadow-2xl"
+              >
+                <div className="mx-auto w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900">Удалить поездку из архива?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Вы действительно хотите удалить сохраненную поездку <span className="font-bold text-slate-800">«{tripToDelete.title}»</span>?
+                </p>
+                <div className="flex gap-3 mt-2">
+                  <button 
+                    onClick={() => setTripToDelete(null)}
+                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Отмена
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteSavedTrip(tripToDelete.id)}
+                    className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+
 
         {/* МОДАЛКА ВЫБОРА РЕЖИМА ИМПОРТА (ОБЪЕДИНИТЬ СУЩЕСТВУЮЩИЕ ИЛИ ПЕРЕЗАПИСАТЬ) */}
         <AnimatePresence>
@@ -2295,38 +3089,170 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-2 mt-2 border-t border-slate-100/50 pt-3">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Особенности путешествия:</span>
+                      <div className="flex flex-col gap-2.5 mt-2 border-t border-slate-100/50 pt-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Особенности путешествия:</span>
+                        
+                        <div className="flex flex-col gap-2">
+                          {/* 1. Отдых, Работа */}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              { id: 'isVacation', label: 'Отдых', icon: Palmtree },
+                              { id: 'isWork', label: 'Работа', icon: Briefcase }
+                            ].map(cond => {
+                              const isActive = !!tripConditions[cond.id as keyof TripConditions];
+                              const Icon = cond.icon;
+                              return (
+                                <motion.button
+                                  key={cond.id}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
+                                  className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    isActive 
+                                      ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-xs' 
+                                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
+                                  <span className="truncate">{cond.label}</span>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+
+                          {/* 2. С детьми, С питомцами */}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              { id: 'withKids', label: 'С детьми', icon: Baby },
+                              { id: 'withPets', label: 'С питомцами', icon: PawPrint }
+                            ].map(cond => {
+                              const isActive = !!tripConditions[cond.id as keyof TripConditions];
+                              const Icon = cond.icon;
+                              return (
+                                <motion.button
+                                  key={cond.id}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
+                                  className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    isActive 
+                                      ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-xs' 
+                                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
+                                  <span className="truncate">{cond.label}</span>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+
+                          {/* 3. Поход/Горы, Море/Пляж */}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              { id: 'isHike', label: 'Поход / Горы', icon: Tent },
+                              { id: 'isBeach', label: 'Море / Пляж', icon: Sun }
+                            ].map(cond => {
+                              const isActive = !!tripConditions[cond.id as keyof TripConditions];
+                              const Icon = cond.icon;
+                              return (
+                                <motion.button
+                                  key={cond.id}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
+                                  className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    isActive 
+                                      ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-xs' 
+                                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
+                                  <span className="truncate">{cond.label}</span>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+
+                          {/* 4. Лагерь, Спорт */}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              { id: 'isCamp', label: 'Лагерь', icon: Trees },
+                              { id: 'isSport', label: 'Спорт', icon: Dumbbell }
+                            ].map(cond => {
+                              const isActive = !!tripConditions[cond.id as keyof TripConditions];
+                              const Icon = cond.icon;
+                              return (
+                                <motion.button
+                                  key={cond.id}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
+                                  className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    isActive 
+                                      ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-xs' 
+                                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
+                                  <span className="truncate">{cond.label}</span>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+
+                          {/* 5. Холод, Жара, Дождь */}
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: 'isCold', label: 'Холод', icon: Snowflake },
+                              { id: 'isHot', label: 'Жара', icon: Flame },
+                              { id: 'isRain', label: 'Дождь', icon: CloudRain }
+                            ].map(cond => {
+                              const isActive = !!tripConditions[cond.id as keyof TripConditions];
+                              const Icon = cond.icon;
+                              return (
+                                <motion.button
+                                  key={cond.id}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
+                                  className={`py-2 px-1 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                                    isActive 
+                                      ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-xs' 
+                                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
+                                  <span className="truncate">{cond.label}</span>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Кнопки управления шаблонами поездки */}
+                      <div className="flex flex-col gap-2 mt-1 border-t border-slate-100/50 pt-3">
                         <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { id: 'withKids', label: 'С детьми', icon: Baby },
-                            { id: 'isBeach', label: 'Море/Пляж', icon: Sun },
-                            { id: 'isHike', label: 'Поход/Горы', icon: Tent },
-                            { id: 'isCold', label: 'Холодно', icon: Snowflake },
-                            { id: 'isHot', label: 'Жарко', icon: Flame },
-                            { id: 'isRain', label: 'Дождь', icon: CloudRain },
-                            { id: 'isCamp', label: 'Лагерь', icon: Trees },
-                            { id: 'isSport', label: 'Спорт', icon: Dumbbell }
-                          ].map(cond => {
-                            const isActive = tripConditions[cond.id as keyof TripConditions];
-                            const Icon = cond.icon;
-                            return (
-                              <motion.button
-                                key={cond.id}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setTripConditions(prev => ({ ...prev, [cond.id]: !prev[cond.id as keyof TripConditions] }))}
-                                className={`py-2 px-1 text-[11px] font-bold rounded-xl border transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
-                                  isActive 
-                                    ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-sm' 
-                                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                                }`}
-                              >
-                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
-                                <span>{cond.label}</span>
-                              </motion.button>
-                            );
-                          })}
+                          <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={openSaveCurrentTripDialog}
+                            className="py-2 px-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            <span>Сохранить</span>
+                          </motion.button>
+
+                          <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setIsSavedTripsModalOpen(true)}
+                            className="py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200/80 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <Bookmark className="w-3.5 h-3.5 text-orange-600" />
+                            <span>Мои поездки ({savedTrips.length})</span>
+                          </motion.button>
                         </div>
                       </div>
                     </div>
