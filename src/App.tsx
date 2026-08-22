@@ -520,6 +520,110 @@ interface PendingImport {
   filename?: string;
 }
 
+// Вспомогательные функции для умного поиска и исключения дубликатов позиций
+function cleanItemText(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'«»+&\\|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getStem(word: string): string {
+  const w = word.toLowerCase().trim();
+  if (w.length <= 3) return w;
+  return w
+    .replace(/(остями|ость|остью|остей|ости|ение|ения|ению|ением|ениях|ание|ания|анию|анием|аниях)$/i, '')
+    .replace(/(иями|ями|ами|ями|ов|ев|ей|ий|ый|ая|ое|ые|ие|ую|юю|ой|ей|ем|ом|ах|ях)$/i, '')
+    .replace(/(чик|щик|ок|ек|ик|ка|ки|ку|ке|кой|кам|ках|ками|ком|ца|це|цы|цу|цей)$/i, '')
+    .replace(/(о|е|а|я|у|ю|ы|и|ь)$/i, '');
+}
+
+const STOP_WORDS = new Set([
+  'для', 'или', 'под', 'при', 'над', 'без', 'через', 'про', 'как', 'так', 'из', 'на', 'в', 'с', 'со', 'по',
+  'пачка', 'штук', 'штука', 'штуки', 'пар', 'пара', 'пары', 'набор', 'комплект', 'шт',
+  'запасной', 'запасные', 'сменный', 'сменные', 'сменная', 'небольшой', 'большой', 'пакетик',
+  'прочный', 'легкий', 'легкая', 'легкие', 'удобный', 'удобная', 'удобные', 'яркий',
+  'детский', 'детская', 'детские', 'детское', 'мужской', 'мужская', 'мужские',
+  'женский', 'женская', 'женские', 'специальный', 'дорожный', 'дорожная', 'дорожные',
+  'все', 'весь', 'вся', 'что', 'это', 'этот', 'эта', 'эти', 'тот', 'то', 'дней', 'дня',
+  'свой', 'своя', 'свои', 'быстросохнущее', 'электрическая', 'электрический',
+  'компактный', 'компактная', 'индивидуальный', 'индивидуальная', 'универсальный', 'прохладной', 'свежей'
+]);
+
+const KEY_OBJECT_STEMS = [
+  'костюм', 'рубашк', 'блузк', 'купальн', 'плавк', 'дождев', 'ветров',
+  'термобел', 'термоноск', 'наушн', 'гарнитур', 'ноутбук', 'планшет',
+  'зонт', 'кроссов', 'ботин', 'туфл', 'сандал', 'босоножк', 'сланц', 'тапочк',
+  'полотенц', 'панам', 'шляп', 'кепк', 'бейсболк', 'термос', 'фонар', 'спальн',
+  'мультитул', 'ридер', 'книг', 'плед', 'подстилк', 'повод', 'ошейник',
+  'намордник', 'горшок', 'павербанк', 'powerbank', 'сушилк', 'репеллент',
+  'беруш', 'бинт', 'тейп', 'аптечк', 'градусник', 'термометр', 'слюнявчик', 'нагрудник'
+];
+
+function isDuplicateOfExisting(
+  candidateName: string,
+  existingItems: ({ name: string } | string)[]
+): boolean {
+  if (!candidateName || !candidateName.trim()) return false;
+  const cleanCand = cleanItemText(candidateName);
+  if (!cleanCand) return false;
+
+  const candWords = cleanCand.split(/\s+/).filter(w => w.length > 1);
+  const candTokens = candWords.filter(w => !STOP_WORDS.has(w));
+  const candStems = candTokens.map(getStem);
+
+  for (const existing of existingItems) {
+    const rawExistingName = typeof existing === 'string' ? existing : existing?.name;
+    if (!rawExistingName) continue;
+
+    const cleanExist = cleanItemText(rawExistingName);
+    if (!cleanExist) continue;
+
+    // 1. Прямое совпадение нормализованных строк
+    if (cleanCand === cleanExist) return true;
+
+    const existWords = cleanExist.split(/\s+/).filter(w => w.length > 1);
+    const existTokens = existWords.filter(w => !STOP_WORDS.has(w));
+    const existStems = existTokens.map(getStem);
+
+    // 2. Совпадение по ключевому предметному корню (например, "костюм", "ноутбук", "дождевик", "наушники")
+    for (const cStem of candStems) {
+      if (KEY_OBJECT_STEMS.some(keyRoot => cStem.startsWith(keyRoot) || keyRoot.startsWith(cStem))) {
+        for (const eStem of existStems) {
+          if (cStem === eStem || (cStem.startsWith(eStem) && eStem.length >= 4) || (eStem.startsWith(cStem) && cStem.length >= 4)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 3. Многословные пересечения основ (например, "солнцезащитные очки", "солнцезащитный крем SPF 50+")
+    const sharedStems = candStems.filter(cs => existStems.some(es => es === cs || (cs.length >= 5 && es.startsWith(cs)) || (es.length >= 5 && cs.startsWith(es))));
+    if (sharedStems.length >= 2) {
+      return true;
+    }
+
+    // 4. Одно подмножество полностью входит в другое, если основы не пустые
+    if (candStems.length >= 1 && candStems.every(cs => existStems.includes(cs))) {
+      return true;
+    }
+    if (existStems.length >= 1 && existStems.every(es => candStems.includes(es))) {
+      return true;
+    }
+
+    // 5. Вхождение подстроки длиной более 5 символов
+    if (cleanCand.length >= 5 && cleanExist.length >= 5) {
+      if (cleanCand.includes(cleanExist) || cleanExist.includes(cleanCand)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // Функция объединения существующих и импортируемых членов/списков без перезаписи
 function mergeMembersData(currentMembers: Member[], importedMembers: Member[]): Member[] {
   const result: Member[] = currentMembers.map(m => {
@@ -543,7 +647,7 @@ function mergeMembersData(currentMembers: Member[], importedMembers: Member[]): 
     );
 
     if (existingIndex === -1) {
-      // Это новый чемодан (путешественник) — добавляем его целикм!
+      // Это новый чемодан (путешественник) — добавляем его целиком!
       const isIdTaken = result.some(r => r.id === normalizedImp.id);
       const uniqueId = isIdTaken
         ? 'm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)
@@ -554,7 +658,7 @@ function mergeMembersData(currentMembers: Member[], importedMembers: Member[]): 
         id: uniqueId
       });
     } else {
-      // Человек уже существует — объединяем его категории и позиций
+      // Человек уже существует — объединяем его категории и позиции
       const existingMember = result[existingIndex];
       const mergedLists: Lists = { ...existingMember.lists };
       const categoryOrder = [
@@ -573,13 +677,10 @@ function mergeMembersData(currentMembers: Member[], importedMembers: Member[]): 
         } else {
           // Категория уже есть — объединяем вещи без затирания существующих статусов
           const currentItems = mergedLists[catName];
-          const existingNames = new Set(
-            currentItems.map(it => it.name.trim().toLowerCase())
-          );
 
           // Добавляем только те позиции из файла, которых еще НЕТ у человека
           const newItems = impItems
-            .filter(impItem => !existingNames.has(impItem.name.trim().toLowerCase()))
+            .filter(impItem => !isDuplicateOfExisting(impItem.name, currentItems))
             .map(item => ({ ...item }));
 
           mergedLists[catName] = [...currentItems, ...newItems];
@@ -1412,8 +1513,41 @@ export default function App() {
     }
   };
 
-  const generateLocalList = (conditions: TripConditions, days: number, gender: Gender, ageGroup: AgeGroup): Lists => {
+  const generateLocalList = (
+    conditions: TripConditions,
+    days: number,
+    gender: Gender,
+    ageGroup: AgeGroup,
+    existingMemberLists?: Lists
+  ): Lists => {
     const combined: Lists = {};
+
+    // Собираем все существующие элементы, чтобы исключить любые дубликаты
+    const existingAllItems: { name: string }[] = [];
+
+    if (existingMemberLists) {
+      Object.values(existingMemberLists).forEach((items: Item[] | undefined) => {
+        (items || []).forEach((it: Item) => {
+          if (it && it.name) existingAllItems.push({ name: it.name });
+        });
+      });
+    }
+
+    // Вспомогательная функция для добавления элемента без дублирования
+    const addCategoryItem = (catName: string, item: { name: string; count: number; packed?: boolean }) => {
+      if (isDuplicateOfExisting(item.name, existingAllItems)) {
+        return false;
+      }
+      if (!combined[catName]) combined[catName] = [];
+      combined[catName].push({
+        name: item.name,
+        count: item.count,
+        packed: item.packed || false
+      });
+      existingAllItems.push({ name: item.name });
+      return true;
+    };
+
     let baseTemplate: any;
     if (ageGroup === 'pet') {
       baseTemplate = DEFAULT_ITEMS.pet;
@@ -1422,9 +1556,9 @@ export default function App() {
       baseTemplate = DEFAULT_ITEMS[key as keyof typeof DEFAULT_ITEMS] || DEFAULT_ITEMS.adult_male;
     }
 
-    // Inject base template with scaling
+    // Добавляем базовый шаблон с учетом масштабирования по дням
     Object.entries(baseTemplate as Record<string, any[]>).forEach(([catName, items]) => {
-      combined[catName] = items.map((item: any) => {
+      items.forEach((item: any) => {
         let factor = 1;
         if (catName === "👕 Одежда" && (item.name.includes("Футболк") || item.name.includes("белье") || item.name.includes("Носки") || item.name.includes("Плать") || item.name.includes("Легинсы") || item.name.includes("Шорты"))) {
           factor = Math.max(1, Math.min(days, 12));
@@ -1441,285 +1575,285 @@ export default function App() {
         } else if (catName === "🧼 Гигиена и Уход" && item.name.includes("пеленки")) {
           factor = Math.max(2, days);
         }
-        return {
+        addCategoryItem(catName, {
           name: item.name,
           count: Math.ceil(item.count * factor),
           packed: false
-        };
+        });
       });
     });
 
     // 1. Работа / Командировка
     if (conditions.isWork) {
       if (ageGroup === 'adult') {
-        if (!combined["💼 Работа / Командировка"]) combined["💼 Работа / Командировка"] = [];
-        combined["💼 Работа / Командировка"].push(
-          { name: "Ноутбук и зарядное устройство", count: 1, packed: false },
-          { name: "Командировочное удостоверение / Документы", count: 1, packed: false },
-          { name: "Компьютерная мышь и кабели/адаптеры", count: 1, packed: false },
-          { name: "Гарнитура / Наушники для онлайн-встреч", count: 1, packed: false },
-          { name: "Бейдж / Пропуск / Визитки", count: 1, packed: false },
-          { name: "Блокнот и деловая ручка для записей", count: 1, packed: false },
-          { name: "Флеш-карта / Внешний SSD накопитель", count: 1, packed: false },
-          { name: gender === 'male' ? "Деловой костюм / Рубашка" : "Деловой костюм / Блузка", count: 1, packed: false },
-          { name: "Классическая обувь / Туфли", count: 1, packed: false }
-        );
+        const cat = "💼 Работа / Командировка";
+        [
+          { name: "Ноутбук и зарядное устройство", count: 1 },
+          { name: "Командировочное удостоверение / Документы", count: 1 },
+          { name: "Компьютерная мышь и кабели/адаптеры", count: 1 },
+          { name: "Гарнитура / Наушники для онлайн-встреч", count: 1 },
+          { name: "Бейдж / Пропуск / Визитки", count: 1 },
+          { name: "Блокнот и деловая ручка для записей", count: 1 },
+          { name: "Флеш-карта / Внешний SSD накопитель", count: 1 },
+          { name: gender === 'male' ? "Деловой костюм / Рубашка" : "Деловой костюм / Блузка", count: 1 },
+          { name: "Классическая обувь / Туфли", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 2. Отдых и Релакс
     if (conditions.isVacation) {
-      if (!combined["🌴 Отдых и Релакс"]) combined["🌴 Отдых и Релакс"] = [];
+      const cat = "🌴 Отдых и Релакс";
       if (ageGroup === 'adult') {
-        combined["🌴 Отдых и Релакс"].push(
-          { name: "Книга / Электронная книга (ридер)", count: 1, packed: false },
-          { name: "Маска для сна и беруши в дорогу", count: 1, packed: false },
-          { name: "Наушники для музыки и подкастов", count: 1, packed: false },
-          { name: "Удобная свободная одежда для отдыха", count: 2, packed: false }
-        );
+        [
+          { name: "Книга / Электронная книга (ридер)", count: 1 },
+          { name: "Маска для сна и беруши в дорогу", count: 1 },
+          { name: "Наушники для музыки и подкастов", count: 1 },
+          { name: "Удобная свободная одежда для отдыха", count: 2 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'child') {
-        combined["🌴 Отдых и Релакс"].push(
-          { name: "Книга сказок / Детские головоломки", count: 1, packed: false },
-          { name: "Компактная дорожная игра", count: 1, packed: false }
-        );
+        [
+          { name: "Книга сказок / Детские головоломки", count: 1 },
+          { name: "Компактная дорожная игра", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["🌴 Отдых и Релакс"].push(
-          { name: "Любимая мягкая подстилка / Плед", count: 1, packed: false },
-          { name: "Лакомство-погрызушка длительного действия", count: 1, packed: false }
-        );
+        [
+          { name: "Любимая мягкая подстилка / Плед", count: 1 },
+          { name: "Лакомство-погрызушка длительного действия", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 3. С детьми (в помощь родителям)
     if (conditions.withKids && ageGroup === 'adult') {
-      if (!combined["👶 В помощь родителям"]) combined["👶 В помощь родителям"] = [];
-      combined["👶 В помощь родителям"].push(
-        { name: "Детская аптечка (градусник, жаропонижающее, пластыри)", count: 1, packed: false },
-        { name: "Влажные детские салфетки (большая пачка)", count: 2, packed: false },
-        { name: "Детские перекусы и питьевая вода с дозатором", count: 3, packed: false },
-        { name: "Запасные пакеты для сменной одежды", count: 5, packed: false },
-        { name: "Нагрудник / Слюнявчик", count: 1, packed: false },
-        { name: "Дорожный складной горшок / накладка", count: 1, packed: false }
-      );
+      const cat = "👶 В помощь родителям";
+      [
+        { name: "Детская аптечка (градусник, жаропонижающее, пластыри)", count: 1 },
+        { name: "Влажные детские салфетки (большая пачка)", count: 2 },
+        { name: "Детские перекусы и питьевая вода с дозатором", count: 3 },
+        { name: "Запасные пакеты для сменной одежды", count: 5 },
+        { name: "Нагрудник / Слюнявчик", count: 1 },
+        { name: "Дорожный складной горшок / накладка", count: 1 }
+      ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
     }
 
     // 4. С питомцами (в дорогу)
     if (conditions.withPets && ageGroup === 'adult') {
-      if (!combined["🐕 Для питомца (в дорогу)"]) combined["🐕 Для питомца (в дорогу)"] = [];
-      combined["🐕 Для питомца (в дорогу)"].push(
-        { name: "Ветеринарный паспорт с отметками о прививках", count: 1, packed: false },
-        { name: "Поводок, ошейник с адресником и намордник", count: 1, packed: false },
-        { name: "Дорожная поилка и складная миска", count: 1, packed: false },
-        { name: "Запас сухого корма и лакомств в дорогу", count: 1, packed: false },
-        { name: "Пакеты для уборки за собакой", count: 1, packed: false },
-        { name: "Влажные салфетки для лап и шерсти", count: 1, packed: false }
-      );
+      const cat = "🐕 Для питомца (в дорогу)";
+      [
+        { name: "Ветеринарный паспорт с отметками о прививках", count: 1 },
+        { name: "Поводок, ошейник с адресником и намордник", count: 1 },
+        { name: "Дорожная поилка и складная миска", count: 1 },
+        { name: "Запас сухого корма и лакомств в дорогу", count: 1 },
+        { name: "Пакеты для уборки за собакой", count: 1 },
+        { name: "Влажные салфетки для лап и шерсти", count: 1 }
+      ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
     }
 
     // 5. Море / Пляж
     if (conditions.isBeach) {
-      if (!combined["🏖️ Пляж и Отдых"]) combined["🏖️ Пляж и Отдых"] = [];
+      const cat = "🏖️ Пляж и Отдых";
       if (ageGroup === 'adult') {
         if (gender === 'male') {
-          combined["🏖️ Пляж и Отдых"].push(
-            { name: "Мужские плавки", count: 1, packed: false },
-            { name: "Пляжные сланцы", count: 1, packed: false },
-            { name: "Солнцезащитные очки", count: 1, packed: false },
-            { name: "Солнцезащитный крем SPF 50+", count: 1, packed: false },
-            { name: "Пляжное полотенце и сумка", count: 1, packed: false }
-          );
+          [
+            { name: "Мужские плавки", count: 1 },
+            { name: "Пляжные сланцы", count: 1 },
+            { name: "Солнцезащитные очки", count: 1 },
+            { name: "Солнцезащитный крем SPF 50+", count: 1 },
+            { name: "Пляжное полотенце и сумка", count: 1 }
+          ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
         } else {
-          combined["🏖️ Пляж и Отдых"].push(
-            { name: "Купальник", count: 1, packed: false },
-            { name: "Пляжная накидка / Парео", count: 1, packed: false },
-            { name: "Широкополая шляпа", count: 1, packed: false },
-            { name: "Солнцезащитные очки", count: 1, packed: false },
-            { name: "Пляжная сумка & Полотенце", count: 1, packed: false },
-            { name: "Солнцезащитный крем SPF 50+", count: 1, packed: false }
-          );
+          [
+            { name: "Купальник", count: 1 },
+            { name: "Пляжная накидка / Парео", count: 1 },
+            { name: "Широкополая шляпа", count: 1 },
+            { name: "Солнцезащитные очки", count: 1 },
+            { name: "Пляжная сумка & Полотенце", count: 1 },
+            { name: "Солнцезащитный крем SPF 50+", count: 1 }
+          ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
         }
       } else if (ageGroup === 'child') {
-        combined["🏖️ Пляж и Отдых"].push(
-          { name: gender === 'male' ? "Детские плавки" : "Детский купальник", count: 1, packed: false },
-          { name: "Надувной круг / Нарукавники / Жилет", count: 1, packed: false },
-          { name: "Детский солнцезащитный крем SPF 50+", count: 1, packed: false },
-          { name: "Набор игрушек для песка (ведерко, лопатка)", count: 1, packed: false }
-        );
+        [
+          { name: gender === 'male' ? "Детские плавки" : "Детский купальник", count: 1 },
+          { name: "Надувной круг / Нарукавники / Жилет", count: 1 },
+          { name: "Детский солнцезащитный крем SPF 50+", count: 1 },
+          { name: "Набор игрушек для песка (ведерко, лопатка)", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["🏖️ Пляж и Отдых"].push(
-          { name: "Пляжная подстилка / Коврик для питомца", count: 1, packed: false },
-          { name: "Защитный воск для лап от горячего песка", count: 1, packed: false },
-          { name: "Складная силиконовая дорожная миска", count: 1, packed: false }
-        );
+        [
+          { name: "Пляжная подстилка / Коврик для питомца", count: 1 },
+          { name: "Защитный воск для лап от горячего песка", count: 1 },
+          { name: "Складная силиконовая дорожная миска", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 6. Поход / Горы
     if (conditions.isHike) {
-      if (!combined["⛺ Снаряжение & Поход"]) combined["⛺ Снаряжение & Поход"] = [];
+      const cat = "⛺ Снаряжение & Поход";
       if (ageGroup === 'adult') {
-        combined["⛺ Снаряжение & Поход"].push(
-          { name: "Треккинговые прочные ботинки", count: 1, packed: false },
-          { name: "Плотный дождевик / Ветровка", count: 1, packed: false },
-          { name: "Налобный фонарик + запасные батарейки", count: 1, packed: false },
-          { name: "Треккинговые палки", count: 1, packed: false },
-          { name: "Спрей от клещей и комаров", count: 1, packed: false }
-        );
+        [
+          { name: "Треккинговые прочные ботинки", count: 1 },
+          { name: "Плотный дождевик / Ветровка", count: 1 },
+          { name: "Налобный фонарик + запасные батарейки", count: 1 },
+          { name: "Треккинговые палки", count: 1 },
+          { name: "Спрей от клещей и комаров", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
         if (gender === 'male') {
-          combined["⛺ Снаряжение & Поход"].push({ name: "Мультитул / Карманный нож", count: 1, packed: false });
+          addCategoryItem(cat, { name: "Мультитул / Карманный нож", count: 1, packed: false });
         } else {
-          combined["⛺ Снаряжение & Поход"].push({ name: "Термос для горячего чая", count: 1, packed: false });
+          addCategoryItem(cat, { name: "Термос для горячего чая", count: 1, packed: false });
         }
       } else if (ageGroup === 'child') {
-        combined["⛺ Снаряжение & Поход"].push(
-          { name: "Детская удобная обувь с цепкой подошвой", count: 1, packed: false },
-          { name: "Детский легкий дождевик", count: 1, packed: false },
-          { name: "Небольшой детский рюкзачок", count: 1, packed: false },
-          { name: "Детский гипоаллергенный спрей от комаров", count: 1, packed: false }
-        );
+        [
+          { name: "Детская удобная обувь с цепкой подошвой", count: 1 },
+          { name: "Детский легкий дождевик", count: 1 },
+          { name: "Небольшой детский рюкзачок", count: 1 },
+          { name: "Детский гипоаллергенный спрей от комаров", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["⛺ Снаряжение & Поход"].push(
-          { name: "Защитный светящийся ошейник или маячок", count: 1, packed: false },
-          { name: "Усиленный спрей от клещей и блох (ветеринарный)", count: 1, packed: false },
-          { name: "Специальный питьевой поильник-бутылка", count: 1, packed: false }
-        );
+        [
+          { name: "Защитный светящийся ошейник или маячок", count: 1 },
+          { name: "Усиленный спрей от клещей и блох (ветеринарный)", count: 1 },
+          { name: "Специальный питьевой поильник-бутылка", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 7. Холод
     if (conditions.isCold) {
-      if (!combined["❄️ Теплые вещи (Холод)"]) combined["❄️ Теплые вещи (Холод)"] = [];
+      const cat = "❄️ Теплые вещи (Холод)";
       if (ageGroup === 'adult') {
-        combined["❄️ Теплые вещи (Холод)"].push(
-          { name: gender === 'male' ? "Термобелье мужское (комплект)" : "Термобелье женское (комплект)", count: 1, packed: false },
-          { name: "Теплый шерстяной свитер / флис", count: 1, packed: false },
-          { name: "Теплая непромокаемая куртка / Пуховик", count: 1, packed: false },
-          { name: "Теплая шапка и перчатки", count: 1, packed: false },
-          { name: "Теплые термоноски, пар", count: days > 3 ? 3 : 2, packed: false },
-          { name: "Гигиеническая помада от обветривания", count: 1, packed: false }
-        );
+        [
+          { name: gender === 'male' ? "Термобелье мужское (комплект)" : "Термобелье женское (комплект)", count: 1 },
+          { name: "Теплый шерстяной свитер / флис", count: 1 },
+          { name: "Теплая непромокаемая куртка / Пуховик", count: 1 },
+          { name: "Теплая шапка и перчатки", count: 1 },
+          { name: "Теплые термоноски, пар", count: days > 3 ? 3 : 2 },
+          { name: "Гигиеническая помада от обветривания", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
         if (gender === 'female') {
-          combined["❄️ Теплые вещи (Холод)"].push({ name: "Теплый шарф / Бафф", count: 1, packed: false });
+          addCategoryItem(cat, { name: "Теплый шарф / Бафф", count: 1, packed: false });
         }
       } else if (ageGroup === 'child') {
-        combined["❄️ Теплые вещи (Холод)"].push(
-          { name: "Детское термобелье (комплект)", count: 1, packed: false },
-          { name: "Теплый комбинезон / зимняя куртка", count: 1, packed: false },
-          { name: "Детская теплая шапка и шарф", count: 1, packed: false },
-          { name: "Непромокаемые варежки", count: 1, packed: false },
-          { name: "Защитный детский крем от мороза", count: 1, packed: false }
-        );
+        [
+          { name: "Детское термобелье (комплект)", count: 1 },
+          { name: "Теплый комбинезон / зимняя куртка", count: 1 },
+          { name: "Детская теплая шапка и шарф", count: 1 },
+          { name: "Непромокаемые варежки", count: 1 },
+          { name: "Защитный детский крем от мороза", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["❄️ Теплые вещи (Холод)"].push(
-          { name: "Теплый комбинезон / попона для питомца", count: 1, packed: false },
-          { name: "Защитный воск для лап от реагентов и соли", count: 1, packed: false }
-        );
+        [
+          { name: "Теплый комбинезон / попона для питомца", count: 1 },
+          { name: "Защитный воск для лап от реагентов и соли", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 8. Жара
     if (conditions.isHot) {
-      if (!combined["☀️ Летние вещи (Жара)"]) combined["☀️ Летние вещи (Жара)"] = [];
+      const cat = "☀️ Летние вещи (Жара)";
       if (ageGroup === 'adult') {
-        combined["☀️ Летние вещи (Жара)"].push(
-          { name: "Солнцезащитные очки", count: 1, packed: false },
-          { name: "Солнцезащитный крем SPF 50+", count: 1, packed: false },
-          { name: "Легкий головной убор (кепка / панама / соломенная шляпа)", count: 1, packed: false },
-          { name: "Свободная дышащая одежда (шорты, майки, лен)", count: days > 3 ? 3 : 2, packed: false },
-          { name: "Освежающий спрей / Термальная вода", count: 1, packed: false }
-        );
+        [
+          { name: "Солнцезащитные очки", count: 1 },
+          { name: "Солнцезащитный крем SPF 50+", count: 1 },
+          { name: "Легкий головной убор (кепка / панама / соломенная шляпа)", count: 1 },
+          { name: "Свободная дышащая одежда (шорты, майки, лен)", count: days > 3 ? 3 : 2 },
+          { name: "Освежающий спрей / Термальная вода", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'child') {
-        combined["☀️ Летние вещи (Жара)"].push(
-          { name: "Детский солнцезащитный крем SPF 50+", count: 1, packed: false },
-          { name: "Легкая панама или кепка с козырьком", count: 1, packed: false },
-          { name: "Детская одежда из тонкого муслина/хлопка", count: days > 3 ? 4 : 2, packed: false },
-          { name: "Детские солнцезащитные очки с UV-защитой", count: 1, packed: false }
-        );
+        [
+          { name: "Детский солнцезащитный крем SPF 50+", count: 1 },
+          { name: "Легкая панама или кепка с козырьком", count: 1 },
+          { name: "Детская одежда из тонкого муслина/хлопка", count: days > 3 ? 4 : 2 },
+          { name: "Детские солнцезащитные очки с UV-защитой", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["☀️ Летние вещи (Жара)"].push(
-          { name: "Охлаждающий ошейник или коврик для питомца", count: 1, packed: false },
-          { name: "Дорожная поилка с запасом прохладной свежей воды", count: 1, packed: false },
-          { name: "Защитный воск для лап от горячего асфальта", count: 1, packed: false }
-        );
+        [
+          { name: "Охлаждающий ошейник или коврик для питомца", count: 1 },
+          { name: "Дорожная поилка с запасом прохладной свежей воды", count: 1 },
+          { name: "Защитный воск для лап от горячего асфальта", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 9. Дождь
     if (conditions.isRain) {
-      if (!combined["🌧️ Дождь / Непогода"]) combined["🌧️ Дождь / Непогода"] = [];
+      const cat = "🌧️ Дождь / Непогода";
       if (ageGroup === 'adult') {
-        combined["🌧️ Дождь / Непогода"].push(
-          { name: "Зонт складной прочный", count: 1, packed: false },
-          { name: "Водонепроницаемый чехол для телефона", count: 1, packed: false },
-          { name: "Плотный дождевик / Ветровка", count: 1, packed: false },
-          { name: "Сушилка для обуви электрическая", count: 1, packed: false },
-          { name: "Водоотталкивающий спрей для обуви", count: 1, packed: false }
-        );
+        [
+          { name: "Зонт складной прочный", count: 1 },
+          { name: "Водонепроницаемый чехол для телефона", count: 1 },
+          { name: "Плотный дождевик / Ветровка", count: 1 },
+          { name: "Сушилка для обуви электрическая", count: 1 },
+          { name: "Водоотталкивающий спрей для обуви", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'child') {
-        combined["🌧️ Дождь / Непогода"].push(
-          { name: "Детский зонтик", count: 1, packed: false },
-          { name: "Детский дождевик яркий", count: 1, packed: false },
-          { name: "Резиновые сапоги детские", count: 1, packed: false }
-        );
+        [
+          { name: "Детский зонтик", count: 1 },
+          { name: "Детский дождевик яркий", count: 1 },
+          { name: "Резиновые сапоги детские", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["🌧️ Дождь / Непогода"].push(
-          { name: "Дождевик / Ветрозащитный комбинезон", count: 1, packed: false },
-          { name: "Специальное полотенце для лап", count: 1, packed: false }
-        );
+        [
+          { name: "Дождевик / Ветрозащитный комбинезон", count: 1 },
+          { name: "Специальное полотенце для лап", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 10. Лагерь
     if (conditions.isCamp) {
-      if (!combined["🌲 Кемпинг / Лагерь"]) combined["🌲 Кемпинг / Лагерь"] = [];
+      const cat = "🌲 Кемпинг / Лагерь";
       if (ageGroup === 'adult') {
-        combined["🌲 Кемпинг / Лагерь"].push(
-          { name: "Спальный мешок & Коврик (пенка)", count: 1, packed: false },
-          { name: "Посуда металлическая (кружка, миска, ложка)", count: 1, packed: false },
-          { name: "Репеллент от комаров и клещей", count: 1, packed: false },
-          { name: "Сидушка туристическая (хоба)", count: 1, packed: false },
-          { name: "Спички в гермоупаковке / Зажигалка", count: 1, packed: false }
-        );
+        [
+          { name: "Спальный мешок & Коврик (пенка)", count: 1 },
+          { name: "Посуда металлическая (кружка, миска, ложка)", count: 1 },
+          { name: "Репеллент от комаров и клещей", count: 1 },
+          { name: "Сидушка туристическая (хоба)", count: 1 },
+          { name: "Спички в гермоупаковке / Зажигалка", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'child') {
-        combined["🌲 Кемпинг / Лагерь"].push(
-          { name: "Детский спальный мешок", count: 1, packed: false },
-          { name: "Фонарик детский ручной", count: 1, packed: false },
-          { name: "Индивидуальный бейдж с контактами родителей", count: 1, packed: false }
-        );
+        [
+          { name: "Детский спальный мешок", count: 1 },
+          { name: "Фонарик детский ручной", count: 1 },
+          { name: "Индивидуальный бейдж с контактами родителей", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["🌲 Кемпинг / Лагерь"].push(
-          { name: "Светящийся ошейник / маячок для леса", count: 1, packed: false },
-          { name: "Складная миска", count: 2, packed: false },
-          { name: "Длинный поводок-привязь (5-10м)", count: 1, packed: false }
-        );
+        [
+          { name: "Светящийся ошейник / маячок для леса", count: 1 },
+          { name: "Складная миска", count: 2 },
+          { name: "Длинный поводок-привязь (5-10м)", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
     // 11. Спорт
     if (conditions.isSport) {
-      if (!combined["💪 Спорт / Активный отдых"]) combined["💪 Спорт / Активный отдых"] = [];
+      const cat = "💪 Спорт / Активный отдых";
       if (ageGroup === 'adult') {
-        combined["💪 Спорт / Активный отдых"].push(
-          { name: "Спортивная форма (футболка, тайтсы/шорты)", count: days > 3 ? 2 : 1, packed: false },
-          { name: "Спортивные кроссовки", count: 1, packed: false },
-          { name: "Спортивная бутылка для воды", count: 1, packed: false },
-          { name: "Фитнес-браслет / Смарт-часы с зарядкой", count: 1, packed: false },
-          { name: "Эластичный бинт / Спортивный тейп", count: 1, packed: false },
-          { name: "Быстросохнущее полотенце из микрофибры", count: 1, packed: false }
-        );
+        [
+          { name: "Спортивная форма (футболка, тайтсы/шорты)", count: days > 3 ? 2 : 1 },
+          { name: "Спортивные кроссовки", count: 1 },
+          { name: "Спортивная бутылка для воды", count: 1 },
+          { name: "Фитнес-браслет / Смарт-часы с зарядкой", count: 1 },
+          { name: "Эластичный бинт / Спортивный тейп", count: 1 },
+          { name: "Быстросохнущее полотенце из микрофибры", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'child') {
-        combined["💪 Спорт / Активный отдых"].push(
-          { name: "Детская спортивная форма", count: 1, packed: false },
-          { name: "Спортивная бутылочка детская", count: 1, packed: false },
-          { name: "Удобная детская спортивная обувь", count: 1, packed: false },
-          { name: "Скакалка / Мяч спортивный", count: 1, packed: false }
-        );
+        [
+          { name: "Детская спортивная форма", count: 1 },
+          { name: "Спортивная бутылочка детская", count: 1 },
+          { name: "Удобная детская спортивная обувь", count: 1 },
+          { name: "Скакалка / Мяч спортивный", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       } else if (ageGroup === 'pet') {
-        combined["💪 Спорт / Активный отдых"].push(
-          { name: "Спортивная шлейка для бега", count: 1, packed: false },
-          { name: "Амортизирующий поводок", count: 1, packed: false },
-          { name: "Игрушка-пуллер / Фрисби", count: 1, packed: false }
-        );
+        [
+          { name: "Спортивная шлейка для бега", count: 1 },
+          { name: "Амортизирующий поводок", count: 1 },
+          { name: "Игрушка-пуллер / Фрисби", count: 1 }
+        ].forEach(it => addCategoryItem(cat, { ...it, packed: false }));
       }
     }
 
@@ -1732,21 +1866,32 @@ export default function App() {
 
     setTimeout(() => {
       const updatedMembers = members.map(m => {
-        const customList = generateLocalList(tripConditions, tripDays, m.gender, m.ageGroup);
-        
-        // Слияние списков для сохранения ручных изменений и добавления новых вещей
         const existingLists = m.lists || {};
         const mergedLists: Lists = { ...existingLists };
 
+        // Собираем все текущие вещи по всем категориям человека (включая созданные вручную)
+        const allCurrentItems: { name: string }[] = [];
+        Object.values(existingLists).forEach((list: Item[] | undefined) => {
+          (list || []).forEach((it: Item) => {
+            if (it && it.name) allCurrentItems.push({ name: it.name });
+          });
+        });
+
+        // Передаем existingLists в генератор, чтобы новые списки сразу создавались без дубликатов
+        const customList = generateLocalList(tripConditions, tripDays, m.gender, m.ageGroup, existingLists);
+        
+        // Слияние списков для сохранения ручных изменений и добавления новых категорий
         for (const category of Object.keys(customList)) {
           const generatedItems = customList[category] || [];
           if (!mergedLists[category]) {
-            // Если такой категории еще не было в чемодане, добавляем её
-            mergedLists[category] = [...generatedItems];
-          } else {
-            // Если категория уже была создана и отредактирована пользователем,
-            // оставляем её 100% без изменений: удаленные элементы не возвращаем,
-            // добавленные пользователем сохраняем, статусы упаковано и количества не сбрасываем.
+            // Фильтруем любые дубликаты против всех существующих категорий человека
+            const nonDuplicateItems = generatedItems.filter(item => 
+              !isDuplicateOfExisting(item.name, allCurrentItems)
+            );
+            if (nonDuplicateItems.length > 0) {
+              mergedLists[category] = [...nonDuplicateItems];
+              nonDuplicateItems.forEach(it => allCurrentItems.push({ name: it.name }));
+            }
           }
         }
 
@@ -1754,7 +1899,7 @@ export default function App() {
       });
       setMembers(updatedMembers);
       setIsGenerating(false);
-      triggerNotification('✨ Списки успешно обновлены с сохранением ваших изменений!');
+      triggerNotification('✨ Списки успешно обновлены без дубликатов с сохранением ваших изменений!');
     }, 850);
   };
 
